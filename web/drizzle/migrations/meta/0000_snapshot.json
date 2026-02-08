@@ -1,5 +1,5 @@
 {
-  "id": "a5decc69-c747-4403-8fef-1ecbb2f0b634",
+  "id": "eb25b1e3-28cf-4acb-8746-78992de8ce72",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -36,7 +36,21 @@
           "type": "status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
+        },
+        "job_type": {
+          "name": "job_type",
+          "type": "job_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "input_type": {
+          "name": "input_type",
+          "type": "input_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
         },
         "input_uri": {
           "name": "input_uri",
@@ -50,21 +64,27 @@
           "primaryKey": false,
           "notNull": false
         },
-        "createdAt": {
-          "name": "createdAt",
+        "is_number_system": {
+          "name": "is_number_system",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp (0) with time zone",
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
         },
-        "startedAt": {
-          "name": "startedAt",
+        "started_at": {
+          "name": "started_at",
           "type": "timestamp (0) with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "finishedAt": {
-          "name": "finishedAt",
+        "finished_at": {
+          "name": "finished_at",
           "type": "timestamp (0) with time zone",
           "primaryKey": false,
           "notNull": false
@@ -176,6 +196,28 @@
     }
   },
   "enums": {
+    "public.input_type": {
+      "name": "input_type",
+      "schema": "public",
+      "values": [
+        "Custom",
+        "Canonical",
+        "J-Canonical",
+        "Dense",
+        "Adjoined",
+        "Symmetric",
+        "Shifted"
+      ]
+    },
+    "public.job_type": {
+      "name": "job_type",
+      "schema": "public",
+      "values": [
+        "Walk",
+        "Decision",
+        "Classification"
+      ]
+    },
     "public.status": {
       "name": "status",
       "schema": "public",

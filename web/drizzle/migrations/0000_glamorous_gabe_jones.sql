@@ -1,13 +1,18 @@
+CREATE TYPE "public"."input_type" AS ENUM('Custom', 'Canonical', 'J-Canonical', 'Dense', 'Adjoined', 'Symmetric', 'Shifted');--> statement-breakpoint
+CREATE TYPE "public"."job_type" AS ENUM('Walk', 'Decision', 'Classification');--> statement-breakpoint
 CREATE TYPE "public"."status" AS ENUM('Pending', 'Running', 'Success', 'Failed');--> statement-breakpoint
 CREATE TABLE "jobs" (
 	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "jobs_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"user_id" integer NOT NULL,
-	"status" "status",
+	"status" "status" NOT NULL,
+	"job_type" "job_type" NOT NULL,
+	"input_type" "input_type" NOT NULL,
 	"input_uri" text NOT NULL,
 	"output_uri" text,
-	"createdAt" timestamp (0) with time zone DEFAULT now(),
-	"startedAt" timestamp (0) with time zone,
-	"finishedAt" timestamp (0) with time zone
+	"is_number_system" boolean,
+	"created_at" timestamp (0) with time zone DEFAULT now(),
+	"started_at" timestamp (0) with time zone,
+	"finished_at" timestamp (0) with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "users" (
