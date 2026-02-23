@@ -1,1 +1,4 @@
+.vscode
 worker/target
+worker/.env
+zpytest/
