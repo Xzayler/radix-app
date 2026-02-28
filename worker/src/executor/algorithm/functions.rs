@@ -1,5 +1,5 @@
 use crate::executor::algorithm::error::OpError;
-use std::collections::HashMap;
+use std::{collections::HashMap, vec};
 
 extern crate nalgebra as na;
 use algebraeon::nzq::{Integer, Natural, Rational};
@@ -54,8 +54,8 @@ fn pre_compute(m: DMatrix<f32>, d: Vec<DVector<f32>>) -> Result<PreComputed<f32>
 
 fn h(u: &DMatrix<f32>, g: &DMatrix<f32>, z: &DVector<f32>) -> Result<i32, OpError> {
   let uz = u * z;
-  println!("UZ: {:?}", uz);
-  println!("coord: {:?}", uz[(1,0)]);
+  // println!("UZ: {:?}", uz);
+  // println!("coord: {:?}", uz[(1,0)]);
 
   let n = g.ncols();
   let mut s = 0;  // TODO: precompute s?
@@ -126,6 +126,39 @@ fn find_c(m_inv: &DMatrix<f32>) -> Result<u32, OpError> {
   Ok(c)
 }
 
+fn get_loop_floyd<'a>(m_inv: &DMatrix<f32>, u: &DMatrix<f32>, g: &DMatrix<f32>, x: &DVector<f32>, h_map: &HashMap<i32, &'a DVector<f32>>) 
+    -> Result<Vec<DVector<f32>>, OpError> {
+
+  let mut slow = phi(m_inv, u, g, x, h_map)?;
+  let mut fast = phi(m_inv, u, g, &slow, h_map)?;
+
+  while slow != fast {
+    slow = phi(m_inv, u, g, &slow, h_map)?;
+    fast = phi(m_inv, u, g, &phi(m_inv, u, g, &fast, h_map)?, h_map)?;
+  }
+
+  let mut ptr1 = x.clone();
+  let mut ptr2 = slow;
+
+  while ptr1 != ptr2 {
+    ptr1 = phi(m_inv, u, g, &ptr1, h_map)?;
+    ptr2 = phi(m_inv, u, g, &ptr2, h_map)?;
+  }
+
+  let loop_start = ptr1.clone();
+
+  let mut loop_elements = vec![loop_start.clone()];
+  let mut current = phi(m_inv, u, g, &loop_start, h_map)?;
+
+  while current != loop_start {
+      loop_elements.push(current.clone());
+      current = phi(m_inv, u, g, &current, h_map)?;
+  }
+
+  Ok(loop_elements)
+}
+
+
 fn get_box(m_inv: &DMatrix<f32>, c: usize, digits: &Vec<DVector<f32>>, mins: &Vec<Vec<f32>>, maxs: &Vec<Vec<f32>>)
     -> Result<(Vec<i32>, Vec<i32>), OpError> {
   let mut m_pow = m_inv.clone();
@@ -134,13 +167,11 @@ fn get_box(m_inv: &DMatrix<f32>, c: usize, digits: &Vec<DVector<f32>>, mins: &Ve
   let mut xi: Vec<DVector<f32>> = vec![DVector::from_element(0, 1.0); c as usize];
   let mut eta: Vec<DVector<f32>> = vec![DVector::from_element(0, 1.0); c as usize];
   for j in 0..c {
-    // let first_prod = Matrix::mul(&m_pow, &digits_as_matrix[0])?.get_col(0);
     let first_prod = &m_pow * &digits[0];
     xi[j] = first_prod.clone();
     eta[j] = first_prod.clone();
 
     for d_ind in 1..digits.len() {
-      // let prod = Matrix::mul(&m_pow, &digits_as_matrix[d_ind])?.get_col(0);
       let prod = &m_pow * &digits[d_ind]; // TODO: To vector?
       for m in 0..dim {
         if prod[m] > xi[j][m] {
@@ -173,7 +204,7 @@ fn get_box(m_inv: &DMatrix<f32>, c: usize, digits: &Vec<DVector<f32>>, mins: &Ve
   for m in 0..dim {
     l[m] = (-1.0 * (&gamma * &sum_eta[m])).ceil() as i32;
     u[m] = (-1.0 * (&gamma * &sum_xi[m])).floor() as i32;
-  } 
+  }
 
   Ok((l, u))
 }
@@ -232,11 +263,8 @@ mod tests {
       DVector::from_row_slice(&[0.0, -1.0]),
       DVector::from_row_slice(&[-6.0, 5.0]),
       ];
-    let data: PreComputed<f32>;
-    match pre_compute(base, d) {
-      Ok(pre_computed) => {
-        data = pre_computed;
-      }
+    let data: PreComputed<f32> = match pre_compute(base, d) {
+      Ok(pre_computed) => pre_computed,
       Err(err) => {
         panic!("Error while precomputing: {:?}", err);
       }
@@ -264,8 +292,44 @@ mod tests {
       println!("{} asserted.", i);
     }
 
-    Ok(())
-  
+    Ok(())  
   }
 
+  #[test]
+  fn floyd_test() -> Result<(), OpError> {
+    let base: DMatrix<f32> = DMatrix::from_row_slice(2,2, &[
+      2.0, -1.0,
+      1.0, 2.0
+      ]);
+    let d: Vec<DVector<f32>> = vec![
+      DVector::from_row_slice(&[0.0, 0.0]),
+      DVector::from_row_slice(&[1.0, 0.0]),
+      DVector::from_row_slice(&[0.0, 1.0]),
+      DVector::from_row_slice(&[0.0, -1.0]),
+      DVector::from_row_slice(&[-6.0, 5.0]),
+      ];
+    let data: PreComputed<f32> = match pre_compute(base, d) {
+      Ok(pre_computed) => pre_computed,
+      Err(err) => {
+        panic!("Error while precomputing: {:?}", err);
+      }
+    };
+
+    let h_map = match build_h_i(&data.u, &data.g, &data.d) {
+      Ok(map) => map,
+      Err(err) => {
+        panic!("Error while building map: {:?}", err);
+      }
+    };
+
+    let start: DVector<f32> = DVector::from_column_slice(&[-6.0, 3.0]);
+    let expected = vec![
+      DVector::from_column_slice(&[0.0, 0.0]),
+      DVector::from_column_slice(&[0.0, 0.0])
+      ];
+    let res = get_loop_floyd(&data.m_inv, &data.u, &data.g, &start, &h_map)?;
+    println!("Result: {:?}", res);
+    
+    Ok(())
+  }
 }
