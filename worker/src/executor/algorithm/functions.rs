@@ -1,10 +1,11 @@
-use crate::executor::algorithm::error::OpError;
+use crate::executor::algorithm::models::{Norms, OpError};
 use std::{collections::HashMap, vec};
 
 extern crate nalgebra as na;
 use algebraeon::nzq::{Integer, Natural, Rational};
 use na::{DMatrix, DVector};
 use algebraeon::rings::matrix::Matrix as Alg_Matrix;
+use nalgebra::{EuclideanNorm, LpNorm, Norm, UniformNorm, coordinates::X};
 
 
 struct PreComputed<T: Clone> {
@@ -20,12 +21,10 @@ struct PreComputed<T: Clone> {
 fn get_smith_values(m: &DMatrix<f32>) -> (DMatrix<f32>, DMatrix<f32>) {
   // Assuming m is a square matrix
   let dim = m.ncols();
-  println!("M: {:?}", m);
   let cols: Vec<Vec<Integer>> = m.column_iter()
   .map(|col| col.into_iter()
     .map(|elem| Integer::from(elem.clone() as i32)).collect())
   .collect();
-  println!("{:?}", cols);
   let alg_mat: Alg_Matrix<Integer> = Alg_Matrix::from_cols::<>(cols);
   let (u, g, _v, _k) = alg_mat.smith_algorithm();
   let um: DMatrix<f32> = DMatrix::from_row_slice(dim, dim, &(u.entries_list().into_iter().map(|i| i.into()).collect::<Vec<f32>>()));
@@ -76,8 +75,6 @@ fn h(u: &DMatrix<f32>, g: &DMatrix<f32>, z: &DVector<f32>) -> Result<i32, OpErro
     }
     h += prod * r;
   };
-  println!("{:?}", z);
-  println!("{:?}", h);
   Ok(h.round() as i32)
 }
 
@@ -107,23 +104,9 @@ pub fn phi<'a>(m_inv: &DMatrix<f32>, u: &DMatrix<f32>, g: &DMatrix<f32>, x: &DVe
       -> Result<DVector<f32>, OpError> {
 
   let congruent_digit = get_congruent(u, g, x, &h_map)?;
-  println!("{:?}", congruent_digit);
   let diff = x - congruent_digit;
-  println!("{:?}", diff);
   let res = m_inv * diff;
-  println!("{:?}", res);
   Ok(res)
-}
-
-fn find_c(m_inv: &DMatrix<f32>) -> Result<u32, OpError> {
-  let mut c: u32 = 1;
-  let mut m_pow = m_inv.clone();
-  while m_pow.norm() >= 1.0 {
-    c += 1;
-    m_pow = &m_pow * &m_pow;
-  }
-
-  Ok(c)
 }
 
 fn get_loop_floyd<'a>(m_inv: &DMatrix<f32>, u: &DMatrix<f32>, g: &DMatrix<f32>, x: &DVector<f32>, h_map: &HashMap<i32, &'a DVector<f32>>) 
@@ -158,21 +141,78 @@ fn get_loop_floyd<'a>(m_inv: &DMatrix<f32>, u: &DMatrix<f32>, g: &DMatrix<f32>, 
   Ok(loop_elements)
 }
 
+fn spectral_norm(m: &DMatrix<f32>) -> f32 {
+  let svd = m.clone().svd(false, false);
+  svd.singular_values[0]
+}
 
-fn get_box(m_inv: &DMatrix<f32>, c: usize, digits: &Vec<DVector<f32>>, mins: &Vec<Vec<f32>>, maxs: &Vec<Vec<f32>>)
+fn find_c_gamma_spectral(m_inv: &DMatrix<f32>) -> Result<(usize, f32), OpError> {
+  let norm_threshold: f32 = 0.01;
+  let mut c: usize = 1;
+  let inv_norm = spectral_norm(&m_inv);
+  if inv_norm >= 1.0 {
+    return Err(OpError::InvalidNorm(Norms::Uniform));
+  }
+
+  let mut m_pow = m_inv.clone();
+
+  while spectral_norm(&m_pow) >= norm_threshold {
+    c += 1;
+    m_pow = &m_pow * m_inv;
+  }
+
+  let gamma = 1.0 / (1.0 - spectral_norm(&m_pow));
+
+  Ok((c, gamma))
+}
+
+fn find_c_gamma_norm(m_inv: &DMatrix<f32>, norm: &impl Norm<f32>) -> Result<(usize, f32), OpError> {
+  let norm_threshold: f32 = 0.01;
+  let mut c: usize = 1;
+  let inv_norm = m_inv.apply_norm(norm);
+  if inv_norm >= 1.0 {
+    return Err(OpError::InvalidNorm(Norms::Uniform));
+  }
+
+  let mut m_pow = m_inv.clone();
+  while m_pow.apply_norm(norm) >= norm_threshold {
+    c += 1;
+    m_pow = &m_pow * m_inv;
+  }
+
+  let gamma = 1.0 / (1.0 - m_pow.apply_norm(norm));
+
+  Ok((c, gamma))
+}
+
+fn find_c_gamma(m_inv: &DMatrix<f32>, norm: Norms) -> Result<(usize, f32), OpError> {
+  match norm {
+    Norms::Spectral => {
+      find_c_gamma_spectral(m_inv)
+    },
+    Norms::Uniform => {
+      find_c_gamma_norm(m_inv, &UniformNorm)
+    },
+    Norms::L1 => {
+      find_c_gamma_norm(m_inv, &LpNorm(1))
+    }
+  }
+}
+
+fn get_cover_box(m_inv: &DMatrix<f32>, c: usize, gamma: f32, digits: &Vec<DVector<f32>>)
     -> Result<(Vec<i32>, Vec<i32>), OpError> {
   let mut m_pow = m_inv.clone();
   let dim = m_inv.ncols();
 
-  let mut xi: Vec<DVector<f32>> = vec![DVector::from_element(0, 1.0); c as usize];
-  let mut eta: Vec<DVector<f32>> = vec![DVector::from_element(0, 1.0); c as usize];
+  let mut xi: Vec<DVector<f32>> = vec![DVector::from_element(0, 1.0); c];
+  let mut eta: Vec<DVector<f32>> = vec![DVector::from_element(0, 1.0); c];
   for j in 0..c {
     let first_prod = &m_pow * &digits[0];
     xi[j] = first_prod.clone();
     eta[j] = first_prod.clone();
 
     for d_ind in 1..digits.len() {
-      let prod = &m_pow * &digits[d_ind]; // TODO: To vector?
+      let prod = &m_pow * &digits[d_ind];
       for m in 0..dim {
         if prod[m] > xi[j][m] {
           xi[j][m] = prod[m].clone();
@@ -182,31 +222,36 @@ fn get_box(m_inv: &DMatrix<f32>, c: usize, digits: &Vec<DVector<f32>>, mins: &Ve
         }
       }
     }
-    if j < c {
+    if j < (c-1) {
       m_pow = &m_pow * m_inv; 
     }
   }
+  println!("Xi: {:?}", xi);
+  println!("Eta: {:?}", eta);
 
-  let gamma = 1.0 / 1.0 - m_pow.norm();
-
-  let mut sum_xi: Vec<f32> = Vec::with_capacity(c);
-  let mut sum_eta: Vec<f32> = Vec::with_capacity(c);
-  for (j, vec) in xi.into_iter().enumerate() {
-    sum_xi[j] = vec.into_iter().sum();
+  let mut sum_xi: DVector<f32> = DVector::from_element(dim, 0.0);
+  let mut sum_eta: DVector<f32> = DVector::from_element(dim, 0.0);
+  println!("Sum_xi: {:?}", sum_xi);
+  println!("Sum_eta: {:?}", sum_xi);
+  for (_j, vec) in xi.into_iter().enumerate() {
+    sum_xi += vec;
   }
-  for (j, vec) in eta.into_iter().enumerate() {
-    sum_eta[j] = vec.into_iter().sum();
+  for (_j, vec) in eta.into_iter().enumerate() {
+    sum_eta += vec;
   }
 
+  println!("Sum_xi: {:?}", sum_xi);
+  println!("Sum_eta: {:?}", sum_eta);
 
-  let mut l: Vec<i32> = Vec::with_capacity(dim);
-  let mut u: Vec<i32> = Vec::with_capacity(dim);
+  // let gamma = 1.0 / (1.0 - spectral_norm());
+  let mut l: Vec<i32> = vec![0; dim];
+  let mut u: Vec<i32> = vec![0; dim];
   for m in 0..dim {
     l[m] = (-1.0 * (&gamma * &sum_eta[m])).ceil() as i32;
     u[m] = (-1.0 * (&gamma * &sum_xi[m])).floor() as i32;
   }
 
-  Ok((l, u))
+  Ok((u, l))
 }
 
 #[cfg(test)]
@@ -226,11 +271,8 @@ mod tests {
       DVector::from_row_slice(&[0.0, -1.0]),
       DVector::from_row_slice(&[-6.0, 5.0]),
       ];
-    let data: PreComputed<f32>;
-    match pre_compute(base, d) {
-      Ok(pre_computed) => {
-        data = pre_computed;
-      }
+    let data: PreComputed<f32> = match pre_compute(base, d) {
+      Ok(pre_computed) => pre_computed,
       Err(err) => {
         panic!("Error while precomputing: {:?}", err);
       }
@@ -330,6 +372,35 @@ mod tests {
     let res = get_loop_floyd(&data.m_inv, &data.u, &data.g, &start, &h_map)?;
     println!("Result: {:?}", res);
     
+    Ok(())
+  }
+
+  #[test]
+  fn cover_box_test() -> Result<(), OpError> {
+    let base: DMatrix<f32> = DMatrix::from_row_slice(2,2, &[
+      2.0, -1.0,
+      1.0, 2.0
+      ]);
+    let d: Vec<DVector<f32>> = vec![
+      DVector::from_row_slice(&[0.0, 0.0]),
+      DVector::from_row_slice(&[1.0, 0.0]),
+      DVector::from_row_slice(&[0.0, 1.0]),
+      DVector::from_row_slice(&[0.0, -1.0]),
+      DVector::from_row_slice(&[-6.0, 5.0]),
+      ];
+    let data: PreComputed<f32> = match pre_compute(base, d) {
+      Ok(pre_computed) => pre_computed,
+      Err(err) => {
+        panic!("Error while precomputing: {:?}", err);
+      }
+    };
+    let (c, gamma) = find_c_gamma(&data.m_inv, Norms::Spectral)?;
+    println!("c: {:?}", c);
+    let expected_box: (Vec<i32>, Vec<i32>) = (vec![-2, -6], vec![2, 1]);
+    let cover_box = get_cover_box(&data.m_inv, c, gamma, &data.d)?;
+    println!("Box: {:?}", cover_box);
+    assert_eq!(expected_box, cover_box);
+
     Ok(())
   }
 }

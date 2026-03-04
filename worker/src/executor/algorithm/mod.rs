@@ -1,2 +1,2 @@
 pub mod functions;
-pub mod error;
+pub mod models;
