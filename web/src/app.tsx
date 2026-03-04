@@ -1,18 +1,18 @@
 // @refresh reload
-import { Router } from "@solidjs/router";
-import { FileRoutes } from "@solidjs/start/router";
-import { Suspense } from "solid-js";
-import "./app.css";
+import { Router } from '@solidjs/router';
+import { FileRoutes } from '@solidjs/start/router';
+import { Suspense } from 'solid-js';
+import './app.css';
+import { MetaProvider } from '@solidjs/meta';
+import Loading from './components/shared/Loading';
 
 export default function App() {
   return (
     <Router
-      root={props => (
-        <>
-          <a href="/">Index</a>
-          <a href="/about">About</a>
-          <Suspense>{props.children}</Suspense>
-        </>
+      root={(props) => (
+        <MetaProvider>
+          <Suspense fallback={<Loading />}>{props.children}</Suspense>
+        </MetaProvider>
       )}
     >
       <FileRoutes />

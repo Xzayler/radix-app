@@ -8,11 +8,15 @@
     "start": "vinxi start"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "^24.7.0",
     "@types/pg": "^8.16.0",
-    "drizzle-kit": "^0.31.8"
+    "drizzle-kit": "^0.31.8",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1"
   },
   "dependencies": {
+    "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
     "argon2": "^0.44.0",
