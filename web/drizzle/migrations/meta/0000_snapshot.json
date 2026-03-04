@@ -1,5 +1,5 @@
 {
-  "id": "eb25b1e3-28cf-4acb-8746-78992de8ce72",
+  "id": "66f7437f-6530-448c-b7c2-27ed9e31a4da",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -31,6 +31,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "system_id": {
+          "name": "system_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "status": {
           "name": "status",
           "type": "status",
@@ -45,28 +51,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "input_type": {
-          "name": "input_type",
-          "type": "input_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "input_uri": {
-          "name": "input_uri",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "output_uri": {
           "name": "output_uri",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_number_system": {
-          "name": "is_number_system",
-          "type": "boolean",
           "primaryKey": false,
           "notNull": false
         },
@@ -91,6 +78,21 @@
         }
       },
       "indexes": {
+        "system_id_index": {
+          "name": "system_id_index",
+          "columns": [
+            {
+              "expression": "system_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "user_id_index": {
           "name": "user_id_index",
           "columns": [
@@ -120,8 +122,88 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "jobs_system_id_systems_id_fk": {
+          "name": "jobs_system_id_systems_id_fk",
+          "tableFrom": "jobs",
+          "tableTo": "systems",
+          "columnsFrom": [
+            "system_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.systems": {
+      "name": "systems",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "systems_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "dimension": {
+          "name": "dimension",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "base": {
+          "name": "base",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "digit_type": {
+          "name": "digit_type",
+          "type": "input_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_gns": {
+          "name": "is_gns",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signature": {
+          "name": "signature",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "input_uri": {
+          "name": "input_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -200,7 +282,7 @@
       "name": "input_type",
       "schema": "public",
       "values": [
-        "Custom",
+        "Explicit",
         "Canonical",
         "J-Canonical",
         "Dense",

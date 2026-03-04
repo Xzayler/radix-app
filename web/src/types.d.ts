@@ -1,42 +1,65 @@
 // ['Custom', 'Canonical', 'J-Canonical', 'Dense', 'Adjoined', 'Symmetric', 'Shifted']);
 
 export type User = {
-  id: number,
-  userName: string
-}
+  id: number;
+  userName: string;
+};
 
 export type Vector = number[];
+export type Matrix = number[][];
 
-export type BaseJobData = {
-  dimension: number;
-  base: number[][];
-}
-export type CustomJobData = BaseJobData & {
-  count: number;
-  digits: Vector[];
-}
-export type CanonicalJobData = BaseJobData & {}
-export type JCanonicalJobData = BaseJobData & {
+export type DigitKind =
+  | 'Explicit'
+  | 'Canonical'
+  | 'JCanonical'
+  | 'Dense'
+  | 'Adjoined'
+  | 'Symmetric'
+  | 'Shifted';
+
+export type BaseDigit = {
+  type: DigitKind;
+};
+
+export type ExplicitDigits = BaseDigit & {
+  type: 'Explicit';
+  values: Vector[];
+};
+export type CanonicalDigits = BaseDigit & {
+  type: 'Canonical';
+};
+export type JCanonicalDigits = BaseDigit & {
+  type: 'JCanonical';
   jValue: number;
-}
-export type DensJobData = BaseJobData & {}
-export type AdjoinedJobData = BaseJobData & {}
-export type SymmetricJobData = BaseJobData & {}
-export type ShiftedJobData = BaseJobData & {
+};
+export type DenseDigits = BaseDigit & {
+  type: 'Dense';
+};
+export type AdjoinedDigits = BaseDigit & {
+  type: 'Adjoined';
+};
+export type SymmetricDigits = BaseDigit & {
+  type: 'Symmetric';
+};
+export type ShiftedDigits = BaseDigit & {
+  type: 'Shifted';
   shift: number;
-}
+};
 
-export type Job = CustomJobData |
-  CanonicalJobData | 
-  JCanonicalJobData |
-  DensJobData |
-  AdjoinedJobData |
-  SymmetricJobData |
-  ShiftedJobData
+export type Digits =
+  | ExplicitDigits
+  | CanonicalDigits
+  | JCanonicalDigits
+  | DenseDigits
+  | AdjoinedDigits
+  | SymmetricDigits
+  | ShiftedDigits;
 
-export type BaseJobResults = {
-  decision: boolean;
-  walk: Vector[];
-  classification: Vector[][]; // List of loops
-}
-
+export type System = {
+  id: number;
+  dimension: number;
+  base: Matrix;
+  digits: Digits;
+  isGns?: boolean;
+  signature?: number[];
+};
