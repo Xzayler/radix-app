@@ -1,0 +1,90 @@
+'use server';
+import { verify, hash } from 'argon2';
+import { useSession } from 'vinxi/http';
+import {
+  getUserByUserName,
+  getUserById,
+  insertUser,
+} from '~/lib/db/operations';
+import { User } from '~/types';
+import { UserDbInsert } from '~/lib/db/dbTypes';
+
+type SessionData = {
+  userId: number | undefined;
+};
+
+function getUserSession() {
+  const password: string = process.env.USER_SESSION_PASSWORD!;
+  return useSession<SessionData>({
+    password: password,
+  });
+}
+
+async function setCurrentUser(user: User) {
+  const session = await getUserSession();
+  await session.update((data) => ((data.userId = user.id), data));
+}
+
+function processForm(formData: FormData): {
+  userName: string;
+  password: string;
+} {
+  const userName = String(formData.get('username'));
+  const password = String(formData.get('password'));
+
+  // TODO: Validate inputs
+  // let error = validateUsername(username) || validatePassword(password);
+  // if (error) return new Error(error);
+
+  return { userName, password };
+}
+
+export async function login(formData: FormData) {
+  const { userName, password } = processForm(formData);
+
+  const user = await getUserByUserName(userName);
+  if (!user || !(await verify(user.password, password)))
+    throw new Error('Invalid login');
+
+  setCurrentUser(user);
+}
+
+export async function register(formData: FormData) {
+  const { userName, password } = processForm(formData);
+  const existingUser = await getUserByUserName(userName);
+  console.log('Got: ' + existingUser);
+  if (existingUser) throw new Error('User already exists');
+  const newUser: UserDbInsert = {
+    userName,
+    password: await hash(password),
+  };
+  const createdUser = await insertUser(newUser);
+  console.log('Setting session user');
+  setCurrentUser(createdUser);
+  console.log('Set session user');
+}
+
+export async function logout() {
+  const session = await getUserSession();
+  await session.update((d) => (d.userId = undefined));
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  const session = await getUserSession();
+  const userId = session.data.userId;
+  if (!userId) return null;
+
+  try {
+    const user = await getUserById(userId);
+    if (!user) return null;
+    return user as User;
+  } catch {
+    logout();
+    return null;
+  }
+}
+
+export const guestLogin = async () => {
+  const guestUser: User = { id: 5, userName: 'Guest' };
+  setCurrentUser(guestUser);
+};
