@@ -52,16 +52,13 @@ export async function login(formData: FormData) {
 export async function register(formData: FormData) {
   const { userName, password } = processForm(formData);
   const existingUser = await getUserByUserName(userName);
-  console.log('Got: ' + existingUser);
   if (existingUser) throw new Error('User already exists');
   const newUser: UserDbInsert = {
     userName,
     password: await hash(password),
   };
   const createdUser = await insertUser(newUser);
-  console.log('Setting session user');
   setCurrentUser(createdUser);
-  console.log('Set session user');
 }
 
 export async function logout() {
@@ -78,13 +75,14 @@ export async function getCurrentUser(): Promise<User | null> {
     const user = await getUserById(userId);
     if (!user) return null;
     return user as User;
-  } catch {
-    logout();
+  } catch (e) {
+    const session = await getUserSession();
+    await session.update((d) => (d.userId = undefined));
     return null;
   }
 }
 
 export const guestLogin = async () => {
-  const guestUser: User = { id: 5, userName: 'Guest' };
+  const guestUser: User = { id: 1, userName: 'Guest' };
   setCurrentUser(guestUser);
 };

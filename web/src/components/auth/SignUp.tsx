@@ -1,16 +1,11 @@
 import { A, redirect, useSubmission } from '@solidjs/router';
 import { action } from '@solidjs/router';
 import { createEffect } from 'solid-js';
-import { getCurrentUserQuery } from '~/api/queries';
-import { register } from '~/api/server';
-
-const registerAction = action(async (formData: FormData) => {
-  'use server';
-  await register(formData);
-  return redirect('/home', { revalidate: getCurrentUserQuery.key });
-});
+import { registerWithRedirect } from '~/api/queries';
 
 export default function Signup() {
+  const registerAction = action(registerWithRedirect, 'register');
+
   const registerResponse = useSubmission(registerAction);
   createEffect(() => {
     console.log(registerResponse);
