@@ -2,6 +2,7 @@
 import { Router } from '@solidjs/router';
 import { FileRoutes } from '@solidjs/start/router';
 import { Suspense } from 'solid-js';
+import 'katex/dist/katex.min.css';
 import './app.css';
 import { MetaProvider } from '@solidjs/meta';
 import Loading from './components/shared/Loading';

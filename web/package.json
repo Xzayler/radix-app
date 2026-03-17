@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "migrate": "pnpx tsx ./src/db/migrate.ts",
+    "migrate": "pnpx tsx ./src/lib/db/migrate.ts",
     "start": "vinxi start"
   },
   "devDependencies": {
@@ -16,12 +16,14 @@
     "tailwindcss": "^4.2.1"
   },
   "dependencies": {
+    "@kobalte/core": "^0.13.11",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
     "argon2": "^0.44.0",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
+    "katex": "^0.16.38",
     "minio": "^8.0.6",
     "pg": "^8.17.2",
     "solid-js": "^1.9.5",

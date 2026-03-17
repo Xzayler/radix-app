@@ -9,12 +9,12 @@
   --color-highlightextra: rgb(var(--app-color-highlightextra) / 1);
   --color-ui: rgb(var(--app-color-divider) / 1);
   --font-main: var(--font-family);
-  --text-md: 0.9375rem;
+  --text-md: 1rem;
   --text-md--line-height: 1.125rem;
 }
 
 :root {
-  --app-color-accent: 255 122 1;
+  --app-color-accent: 12 99 145;
   --app-color-foreground: 231 233 234; /* #0F1419 */
   --app-color-background: 0 0 0; /* #FFFFFF */
   --app-color-faint: 113 118 123; /* #536471 */

@@ -1,0 +1,60 @@
+import { TextField } from '@kobalte/core/text-field';
+import { createSignal } from 'solid-js';
+
+export default function VectorInput(props: {
+  name: string;
+  label: string;
+  dim: number;
+  disabled: boolean;
+  placeholder?: string;
+}) {
+  const [value, setValue] = createSignal<string>('');
+  const [error, setError] = createSignal<string>('');
+
+  const isVectorStringValid = (vs: string): boolean => {
+    const vectorString = vs.trim();
+    const vectorValueRegex = /^-?\d+(?: -?\d+)*$/g;
+    const regmatch = vectorValueRegex.test(vectorString);
+    if (!regmatch) {
+      setError('Input format is invalid');
+      return false;
+    }
+    const values = vectorString.split(' ').map((s) => parseInt(s));
+    if (values.length != props.dim) {
+      setError("The point's dimensions doesn't match the system's");
+      return false;
+    }
+    if (!values.every((v) => !isNaN(v))) {
+      setError('The vector elements should be integers');
+      return false;
+    }
+    setError('');
+    return true;
+  };
+
+  return (
+    <TextField
+      name={props.name}
+      value={value()}
+      onChange={setValue}
+      aria-placeholder=""
+      validationState={
+        props.disabled || isVectorStringValid(value()) ? 'valid' : 'invalid'
+      }
+      class=""
+    >
+      <TextField.Label>{props.label}</TextField.Label>
+      <TextField.Input
+        disabled={props.disabled}
+        placeholder={props.placeholder}
+        class="px-2 border-2 rounded-md border-ui disabled:bg-faint data-invalid:border-red-700 valid:border-ui"
+      />
+      <TextField.Description class=" text-xs text-faint ">
+        Input vector values separated by spaces
+      </TextField.Description>
+      <TextField.ErrorMessage class="text-xs text-red-700">
+        {error()}
+      </TextField.ErrorMessage>
+    </TextField>
+  );
+}
