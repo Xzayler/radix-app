@@ -19,13 +19,14 @@ export const usersTable = pgTable(
   (table) => [index('user_name_index').on(table.userName)],
 );
 
-export const digitTypeEnum = pgEnum('input_type', [
+export const digitTypeEnum = pgEnum('digit_type', [
   'Explicit',
   'Canonical',
-  'J-Canonical',
+  'JCanonical',
   'Dense',
   'Adjoined',
   'Symmetric',
+  'JSymmetric',
   'Shifted',
 ]);
 
@@ -33,17 +34,30 @@ export const systemsTable = pgTable(
   'systems',
   {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    userId: integer('user_id').references(() => usersTable.id),
     dimension: integer('dimension').notNull(),
     base: integer('base').array().notNull(),
     digitType: digitTypeEnum('digit_type').notNull(),
+    // TODO: Separate for each norm?
     isGNS: boolean('is_gns'),
+    // TODO: Also separate for each norm?
     signature: integer('signature').array(),
-    inputUri: text('input_uri').notNull(),
+    lastJob: timestamp('last_job', {
+      mode: 'date',
+      precision: 0,
+      withTimezone: true,
+    }),
+    // Digit-specific fields
+    digitIds: integer('digits').array(), // array of ids in vector table
+    digitParam: integer('digit_param'),
   },
-  (table) => [
-    // index('system')
-  ],
+  (table) => [index('digits_index').using('gin', table.digitIds)],
 );
+
+export const digitsTable = pgTable('digits', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  elements: integer('elements').array().notNull().unique(),
+});
 
 export const statusEnum = pgEnum('status', [
   'Pending',
@@ -56,6 +70,7 @@ export const jobTypeEnum = pgEnum('job_type', [
   'Decision',
   'Classification',
 ]);
+export const normEnum = pgEnum('norm_type', ['Infinite', 'L1', 'L2']);
 
 export const jobsTable = pgTable(
   'jobs',
@@ -65,16 +80,20 @@ export const jobsTable = pgTable(
       .references(() => usersTable.id)
       .notNull(),
     systemId: integer('system_id')
-      .references(() => systemsTable.id)
+      .references(() => systemsTable.id, { onDelete: 'cascade' })
       .notNull(),
     status: statusEnum('status').notNull(),
     jobType: jobTypeEnum('job_type').notNull(),
+    norm: normEnum('norm').notNull(),
+    walkFrom: integer('walk_from'),
     outputUri: text('output_uri'),
     createdAt: timestamp('created_at', {
       mode: 'date',
       precision: 0,
       withTimezone: true,
-    }).defaultNow(),
+    })
+      .defaultNow()
+      .notNull(),
     startedAt: timestamp('started_at', {
       mode: 'date',
       precision: 0,
@@ -106,6 +125,7 @@ export const jobsRelations = relations(jobsTable, ({ one }) => ({
 export const schema = {
   users: usersTable,
   systems: systemsTable,
+  digitsTable,
   jobs: jobsTable,
   jobsRelations,
 };

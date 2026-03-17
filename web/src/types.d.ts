@@ -8,6 +8,8 @@ export type User = {
 export type Vector = number[];
 export type Matrix = number[][];
 
+export type Norm = 'Infinite' | 'L1' | 'L2';
+
 export type DigitKind =
   | 'Explicit'
   | 'Canonical'
@@ -15,6 +17,7 @@ export type DigitKind =
   | 'Dense'
   | 'Adjoined'
   | 'Symmetric'
+  | 'JSymmetric'
   | 'Shifted';
 
 export type BaseDigit = {
@@ -34,12 +37,17 @@ export type JCanonicalDigits = BaseDigit & {
 };
 export type DenseDigits = BaseDigit & {
   type: 'Dense';
+  normType: Norm;
 };
 export type AdjoinedDigits = BaseDigit & {
   type: 'Adjoined';
 };
 export type SymmetricDigits = BaseDigit & {
   type: 'Symmetric';
+};
+export type JSymmetricDigits = BaseDigit & {
+  type: 'JSymmetric';
+  jValue: number;
 };
 export type ShiftedDigits = BaseDigit & {
   type: 'Shifted';
@@ -53,6 +61,7 @@ export type Digits =
   | DenseDigits
   | AdjoinedDigits
   | SymmetricDigits
+  | JSymmetricDigits
   | ShiftedDigits;
 
 export type System = {
@@ -60,6 +69,30 @@ export type System = {
   dimension: number;
   base: Matrix;
   digits: Digits;
-  isGns?: boolean;
-  signature?: number[];
+  isGns: boolean | null;
+  signature: number[] | null;
+  lastJob: Date | null;
 };
+
+export type JobStatus = 'Pending' | 'Running' | 'Success' | 'Failed';
+export type JobType = 'Walk' | 'Decision' | 'Classification';
+
+export type Job = {
+  id: number;
+  userId: number;
+  systemId: number;
+  status: JobStatus;
+  jobType: JobType;
+  norm: Norm;
+  walkFrom?: number[];
+  outputUri?: string;
+  createdAt?: Date;
+  startedAt?: Date;
+  finishedAt?: Date;
+};
+
+export type NewSystem = Omit<System, 'id'>;
+export type NewJob = Omit<
+  Job,
+  'id' | 'outputUri' | 'createdAt' | 'startedAt' | 'finishedAt'
+>;

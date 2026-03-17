@@ -1,9 +1,53 @@
 {
-  "id": "66f7437f-6530-448c-b7c2-27ed9e31a4da",
+  "id": "ceb5018c-beb2-4aee-b78d-5a15ce6c9978",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.digits": {
+      "name": "digits",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "digits_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "elements": {
+          "name": "elements",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "digits_elements_unique": {
+          "name": "digits_elements_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "elements"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.jobs": {
       "name": "jobs",
       "schema": "",
@@ -51,6 +95,19 @@
           "primaryKey": false,
           "notNull": true
         },
+        "norm": {
+          "name": "norm",
+          "type": "norm_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "walk_from": {
+          "name": "walk_from",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "output_uri": {
           "name": "output_uri",
           "type": "text",
@@ -61,7 +118,7 @@
           "name": "created_at",
           "type": "timestamp (0) with time zone",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "started_at": {
@@ -133,7 +190,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -164,11 +221,17 @@
             "cycle": false
           }
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "dimension": {
           "name": "dimension",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "base": {
           "name": "base",
@@ -178,7 +241,7 @@
         },
         "digit_type": {
           "name": "digit_type",
-          "type": "input_type",
+          "type": "digit_type",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
@@ -195,15 +258,57 @@
           "primaryKey": false,
           "notNull": false
         },
-        "input_uri": {
-          "name": "input_uri",
-          "type": "text",
+        "last_job": {
+          "name": "last_job",
+          "type": "timestamp (0) with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "digits": {
+          "name": "digits",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "digit_param": {
+          "name": "digit_param",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
+      "indexes": {
+        "digits_index": {
+          "name": "digits_index",
+          "columns": [
+            {
+              "expression": "digits",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "systems_user_id_users_id_fk": {
+          "name": "systems_user_id_users_id_fk",
+          "tableFrom": "systems",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -278,16 +383,17 @@
     }
   },
   "enums": {
-    "public.input_type": {
-      "name": "input_type",
+    "public.digit_type": {
+      "name": "digit_type",
       "schema": "public",
       "values": [
         "Explicit",
         "Canonical",
-        "J-Canonical",
+        "JCanonical",
         "Dense",
         "Adjoined",
         "Symmetric",
+        "JSymmetric",
         "Shifted"
       ]
     },
@@ -298,6 +404,15 @@
         "Walk",
         "Decision",
         "Classification"
+      ]
+    },
+    "public.norm_type": {
+      "name": "norm_type",
+      "schema": "public",
+      "values": [
+        "Infinite",
+        "L1",
+        "L2"
       ]
     },
     "public.status": {
