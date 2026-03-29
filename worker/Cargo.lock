@@ -4462,6 +4462,7 @@ version = "0.1.0"
 dependencies = [
  "algebraeon",
  "nalgebra",
+ "rayon",
  "sqlx",
  "tokio",
 ]

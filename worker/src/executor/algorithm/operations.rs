@@ -4,9 +4,10 @@ use std::sync::{Arc, Mutex};
 use nalgebra::{DMatrix, DVector};
 use std::time::SystemTime;
 
+use crate::executor::algorithm::digits::SystemDigitsEnum;
 use crate::executor::algorithm::{
   functions::{
-    build_h_i, find_c_gamma, get_congruent, get_cover_box, get_loop_floyd, h, pre_compute,
+    find_c_gamma, get_cover_box, get_loop_floyd, pre_compute,
     PreComputed,
   },
   models::{Norms, OpError},
@@ -18,11 +19,12 @@ fn loop_contains_point(loop_points: &[DVector<f64>], point: &DVector<f64>) -> bo
   loop_points.iter().any(|loop_point| loop_point == point)
 }
 
-fn get_all_loops<'a>(
+fn get_all_loops(
   l_corner: &Vec<i32>,
   h_corner: &Vec<i32>,
-  data: &PreComputed<'a, f64>,
-  h_map: &HashMap<i32, &'a DVector<f64>>,
+  data: &PreComputed<f64>,
+  digits: &SystemDigitsEnum
+  // h_map: &HashMap<i32, DVector<f64>>,
 ) -> Result<Vec<Vec<DVector<f64>>>, OpError> {
   assert_eq!(l_corner.len(), h_corner.len());
 
@@ -48,7 +50,7 @@ fn get_all_loops<'a>(
       }
 
       let grid_point = DVector::from_column_slice(&point);
-      match get_loop_floyd(&data.m_inv, &data.u, &data.g, &grid_point, h_map) {
+      match get_loop_floyd(&data.m_inv, &grid_point, digits) {
         Ok(loop_points) => {
           let Some(loop_point) = loop_points.first() else {
             return;
@@ -91,15 +93,13 @@ fn get_all_loops<'a>(
 
 pub fn classification(
   base: DMatrix<f64>,
-  digits: &Vec<DVector<f64>>,
+  digits: &SystemDigitsEnum,
   norm: Norms,
 ) -> Result<Vec<Vec<DVector<f64>>>, OpError> {
-  let data = pre_compute(base, digits)?;
+  let data = pre_compute(base)?;
   let (c, gamma) = find_c_gamma(&data.m_inv, norm)?;
-  let (l_corner, h_corner) = get_cover_box(&data.m_inv, c, gamma, data.d)?;
-  let h_map = build_h_i(&data.u, &data.g, data.d)?;
-
-  let unique_loops: Vec<Vec<DVector<f64>>> = get_all_loops(&l_corner, &h_corner, &data, &h_map)?;
+  let (l_corner, h_corner) = get_cover_box(&data.m_inv, c, gamma, digits)?;
+  let unique_loops: Vec<Vec<DVector<f64>>> = get_all_loops(&l_corner, &h_corner, &data, &digits)?;
 
   Ok(unique_loops)
 }
@@ -107,8 +107,8 @@ pub fn classification(
 fn has_any_loop<'a>(
   l_corner: &Vec<i32>,
   h_corner: &Vec<i32>,
-  data: &PreComputed<'a, f64>,
-  h_map: &HashMap<i32, &'a DVector<f64>>,
+  data: &PreComputed<f64>,
+  digits: &SystemDigitsEnum
 ) -> bool {
   assert_eq!(l_corner.len(), h_corner.len());
   let dims = l_corner.len();
@@ -118,7 +118,6 @@ fn has_any_loop<'a>(
     .collect();
 
   let total: usize = sizes.iter().product();
-  println!("total: {:?}", total);
   (0..total).into_par_iter().any(|mut idx| {
     let mut point = vec![0f64; dims];
 
@@ -129,13 +128,11 @@ fn has_any_loop<'a>(
     }
 
     let grid_point = DVector::from_column_slice(&point);
-    println!("Point: {:?}", grid_point.data);
     // TODO: Handle errors
-    let loop_set = get_loop_floyd(&data.m_inv, &data.u, &data.g, &grid_point, h_map);
+    let loop_set = get_loop_floyd(&data.m_inv, &grid_point, &digits);
     let zero_point: DVector<f64> = DVector::from_element(dims, 0.0);
     match loop_set {
       Ok(ref v) => {
-        // println!("CHe: {:?}", idx);
         if v.len() != 1 {
           // Loop [0] has length 1, could be 0 point
           println!("Loop: {:?}", v);
@@ -166,19 +163,18 @@ fn has_any_loop<'a>(
 
 pub fn decision(
   base: DMatrix<f64>,
-  digits: &Vec<DVector<f64>>,
+  digits: &SystemDigitsEnum,
   norm: Norms,
 ) -> Result<bool, OpError> {
   // TODO: Check if matrix is expansive, if not, false
   let start = SystemTime::now();
   println!("Started at {:?}", start);
-  let data = pre_compute(base, digits)?;
+  let data = pre_compute(base)?;
   let (c, gamma) = find_c_gamma(&data.m_inv, norm)?;
-  let (l_corner, h_corner) = get_cover_box(&data.m_inv, c, gamma, data.d)?;
+  let (l_corner, h_corner) = get_cover_box(&data.m_inv, c, gamma, digits)?;
 
-  let h_map = build_h_i(&data.u, &data.g, data.d)?;
   // TODO: Check if remainder value already exists, or size of h_map to be len of digits
-  let res = has_any_loop(&l_corner, &h_corner, &data, &h_map);
+  let res = has_any_loop(&l_corner, &h_corner, &data, &digits);
 
   println!(
     "Duration: {:?}",
@@ -192,7 +188,9 @@ pub fn decision(
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use crate::executor::algorithm::digits::get_explicit;
+
+use super::*;
 
   #[test]
   fn decisionTest() -> Result<(), OpError> {
@@ -217,6 +215,8 @@ mod tests {
       DVector::from_row_slice(&[-1.0, -2.0, -1.0, -2.0]),
       DVector::from_row_slice(&[-3.0, -3.0, -3.0, -3.0]),
     ];
+
+    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, digits));
     let res = decision(base, &digits, Norms::Infinite)?;
     assert!(res);
     Ok(())

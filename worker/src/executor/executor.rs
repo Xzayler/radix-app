@@ -1,7 +1,7 @@
 use std::{error::Error, fmt};
 use nalgebra::{DMatrix, DVector};
 
-use crate::{db::{db, model::{DigitType, Job, JobType, NormType, System}}, executor::algorithm::{digits::{adjoint_digits, canonical_digits_vec, dense_digits, j_canonical_digits_vec, j_symmetric_digits_vec, shifted_canonical_digits_vec, symmetric_digits_vec}, models::Norms, operations::{classification, decision}}};
+use crate::{db::{db, model::{DigitType, Job, JobType, NormType, System}}, executor::algorithm::{digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_dense, get_explicit, get_j_canonical, get_j_symmetric, get_shifted_canonical, get_symmetric}, models::Norms, operations::{classification, decision}}};
 
 
 #[derive(Debug)]
@@ -62,34 +62,32 @@ pub async fn run(job_id: i32) -> Result<(), WorkerError> {
   Ok(())
 }
 
-fn build_system_params(
-  system: &System,
-  norm: &Norms
-) -> Result<(DMatrix<f64>, Vec<DVector<f64>>), WorkerError> {
+fn build_system_params<'a>(
+  system: &'a System,
+  norm: &'a Norms
+) -> Result<(DMatrix<f64>, SystemDigitsEnum), WorkerError> {
   let dim = system.dimension as usize;
   let float_base_values: Vec<f64> = system.base.iter().map(|el| *el as f64).collect();
   let base = DMatrix::from_row_slice(dim, dim, &float_base_values[..]);
-  let det = base.determinant() as i64;
 
-  let res: Vec<DVector<f64>> = match system.digit_type {
+  let res: SystemDigitsEnum = match system.digit_type {
     DigitType::Explicit => match &system.digits {
-      Some(digits) => digits.iter().map(|digit| build_na_vector(digit)).collect(),
+      // Some(digits) => digits.iter().map(|digit| build_na_vector(digit)).collect(),
+      Some(digits) => SystemDigitsEnum::Explicit(get_explicit(&base, digits.iter().map(|digit| build_na_vector(digit)).collect())),
       None => {
         return Err(WorkerError::InvalidInput("Couldn't find digits for explicit system.".into()))
       }
     },
-    DigitType::Canonical => match canonical_digits_vec(dim, det.unsigned_abs()) {
-      Ok(digits) => digits,
+    DigitType::Canonical => match get_canonical(&base) {
+      Ok(digits) => SystemDigitsEnum::Canonical(digits),
       Err(err) => {
         return Err(WorkerError::Unhandled(err.to_string()));
       }
-    },
+    }
     DigitType::JCanonical => match system.digit_param {
       Some(param) => {
-        let abs_determinant = det.unsigned_abs();
-
-        match j_canonical_digits_vec(dim, abs_determinant, param as usize) {
-          Ok(digits) => digits,
+        match get_j_canonical(&base, param as usize) {
+          Ok(digits) => SystemDigitsEnum::Canonical(digits),
           Err(err) => {
             return Err(WorkerError::Unhandled(err.to_string()));
           }
@@ -99,18 +97,16 @@ fn build_system_params(
         return Err(WorkerError::InvalidInput("Couldn't find digit parameter for JCanonical system.".into()))
       }
     },
-    DigitType::Symmetric => match symmetric_digits_vec(dim, det.unsigned_abs()) {
-      Ok(digits) => digits,
+    DigitType::Symmetric => match get_symmetric(&base) {
+      Ok(digits) => SystemDigitsEnum::Symmetric(digits),
       Err(err) => {
         return Err(WorkerError::Unhandled(err.to_string()));
       }
     },
     DigitType::JSymmetric => match system.digit_param {
       Some(param) => {
-        let abs_determinant = det.unsigned_abs();
-
-        match j_symmetric_digits_vec(dim, abs_determinant, param as usize) {
-          Ok(digits) => digits,
+        match get_j_symmetric(&base, param as usize) {
+          Ok(digits) => SystemDigitsEnum::Symmetric(digits),
           Err(err) => {
             return Err(WorkerError::Unhandled(err.to_string()));
           }
@@ -122,10 +118,8 @@ fn build_system_params(
     },
     DigitType::Shifted => match system.digit_param {
       Some(param) => {
-        let abs_determinant = det.unsigned_abs();
-
-        match shifted_canonical_digits_vec(dim, abs_determinant, 0, param as u32) {
-          Ok(digits) => digits,
+        match get_shifted_canonical(&base, 0, param as u32) {
+          Ok(digits) => SystemDigitsEnum::Shifted(digits),
           Err(err) => {
             return Err(WorkerError::Unhandled(err.to_string()));
           }
@@ -135,14 +129,14 @@ fn build_system_params(
         return Err(WorkerError::InvalidInput("Couldn't find digit parameter for Shifted system.".into()))
       }
     },
-    DigitType::Adjoined => match adjoint_digits(dim, det, &base) {
-      Ok(digits) => digits,
+    DigitType::Adjoined => match get_adjoint(&base) {
+      Ok(digits) => SystemDigitsEnum::Adjoint(digits),
       Err(err) => {
         return Err(WorkerError::Unhandled(err.to_string()));
       }
     },
-    DigitType::Dense => match dense_digits(dim, det, &base, norm) {
-      Ok(digits) => digits,
+    DigitType::Dense => match get_dense(&base, norm) {
+      Ok(digits) => SystemDigitsEnum::Dense(digits),
       Err(err) => {
         return Err(WorkerError::Unhandled(err.to_string()));
       }
@@ -165,7 +159,7 @@ fn to_my_norm(db_norm: &NormType) -> Norms {
   }
 }
 
-fn build_job_output(job: &Job, base: DMatrix<f64>, digits: &Vec<DVector<f64>>, norm: Norms) -> Result<JobOutput, WorkerError> {
+fn build_job_output(job: &Job, base: DMatrix<f64>, digits: &SystemDigitsEnum, norm: Norms) -> Result<JobOutput, WorkerError> {
 
   let mut job_output: JobOutput = JobOutput { 
     is_gns: None,
