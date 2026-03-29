@@ -125,38 +125,47 @@ pub fn adjoint_digits(
   dim: usize,
   determinant: i64,
   base: &DMatrix<f64>
-) -> Result<Vec<DVector<f64>>, DigitsError> {
+) -> Result<impl Iterator<Item = DVector<f64>>, DigitsError> {
   let abs_determinant = determinant.unsigned_abs();
   let (u, g_vec) = get_smith_data(base);
   let u_inv = u
+    .try_inverse()
+    .ok_or(DigitsError::NonInvertibleBase)?;
+  let det = determinant as f64;
+  let base_inv = base
     .clone()
     .try_inverse()
     .ok_or(DigitsError::NonInvertibleBase)?;
-    // TODO: ^ weird error here.
-
+  let adjugate = base_inv * det;
   let zero = DVector::from_element(dim, 0.0);
-  let mut digits = Vec::with_capacity(abs_determinant as usize);
+  let base = base.clone();
 
-  for residue in complete_residue_vectors(dim, abs_determinant, g_vec) {
+  Ok(complete_residue_vectors(dim, abs_determinant, g_vec).map(move |residue| {
     let vector = &u_inv * residue;
     let rounded = round_vector(&vector);
     if rounded == zero {
-      digits.push(rounded);
+      rounded
     } else {
-      digits.push(adjoint_congruent_element(dim, determinant, base, &rounded)?);
+      adjoint_congruent_element(dim, determinant, &base, &adjugate, &rounded)
     }
-  }
-
-  Ok(digits)
+  }))
 }
 
-pub fn dense_digits(
+pub fn adjoint_digits_vec(
+  dim: usize,
+  determinant: i64,
+  base: &DMatrix<f64>
+) -> Result<Vec<DVector<f64>>, DigitsError> {
+  Ok(adjoint_digits(dim, determinant, base)?.collect())
+}
+
+pub fn dense_digits_vec(
   dim: usize,
   determinant: i64,
   base: &DMatrix<f64>,
   norm: &Norms
 ) -> Result<Vec<DVector<f64>>, DigitsError> {
-  let mut digits = adjoint_digits(dim, determinant, base)?;
+  let mut digits = adjoint_digits_vec(dim, determinant, base)?;
   let step = determinant.unsigned_abs() as f64;
 
   loop {
@@ -256,15 +265,10 @@ fn adjoint_congruent_element(
   dim: usize,
   determinant: i64,
   base: &DMatrix<f64>,
+  adjugate: &DMatrix<f64>,
   point: &DVector<f64>,
-) -> Result<DVector<f64>, DigitsError> {
+) -> DVector<f64> {
   let det = determinant as f64;
-  let base_inv = base
-    .clone()
-    .try_inverse()
-    .ok_or(DigitsError::NonInvertibleBase)?;
-  let adjugate = base_inv * det;
-
   let mut reduced = DVector::from_element(dim, 0.0);
   for row in 0..dim {
     let component: f64 = (0..dim)
@@ -273,7 +277,7 @@ fn adjoint_congruent_element(
     reduced[row] = symmetric_modulo(component.round() as i64, determinant) as f64;
   }
 
-  Ok(round_vector(&((base * reduced) / det)))
+  round_vector(&((base * reduced) / det))
 }
 
 fn symmetric_modulo(value: i64, modulus: i64) -> i64 {
@@ -368,7 +372,9 @@ mod tests {
   fn adjoint_digits_test() {
     let base = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
     let dim = base.ncols();
-    let digits = adjoint_digits(dim, base.determinant() as i64, &base).expect("generated digits");
+    let digits: Vec<_> = adjoint_digits(dim, base.determinant() as i64, &base)
+      .expect("generated digits")
+      .collect();
     let expected = vec![
       DVector::from_vec(vec![0.0, 0.0]),
       DVector::from_vec(vec![0.0, 1.0]),
@@ -401,7 +407,7 @@ mod tests {
       DVector::from_row_slice(&[1.0, -1.0, 1.0, -1.0]),
       DVector::from_row_slice(&[-1.0, 2.0, -1.0, 2.0])
     ];
-    let digits = dense_digits(dim, base.determinant() as i64, &base, &Norms::Infinite).expect("generated digist");
+    let digits = dense_digits_vec(dim, base.determinant() as i64, &base, &Norms::Infinite).expect("generated digist");
     println!("{:?}", digits);
     assert_eq!(digits.len(), expected.len());
     assert!(expected.iter().all(|expected_digit| digits.contains(expected_digit)));
