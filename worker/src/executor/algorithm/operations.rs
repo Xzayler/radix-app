@@ -1,17 +1,9 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use nalgebra::{DMatrix, DVector};
+use nalgebra::DVector;
 use std::time::SystemTime;
 
-use crate::executor::algorithm::digits::SystemDigitsEnum;
-use crate::executor::algorithm::{
-  functions::{
-    find_c_gamma, get_cover_box, get_loop_floyd, pre_compute,
-    PreComputed,
-  },
-  models::{Norms, OpError},
-};
+use crate::executor::algorithm::{models::WorkerError, systems::{System, SystemEnum}};
 
 use rayon::prelude::*;
 
@@ -22,10 +14,8 @@ fn loop_contains_point(loop_points: &[DVector<f64>], point: &DVector<f64>) -> bo
 fn get_all_loops(
   l_corner: &Vec<i32>,
   h_corner: &Vec<i32>,
-  data: &PreComputed<f64>,
-  digits: &SystemDigitsEnum
-  // h_map: &HashMap<i32, DVector<f64>>,
-) -> Result<Vec<Vec<DVector<f64>>>, OpError> {
+  system: &SystemEnum
+) -> Result<Vec<Vec<DVector<f64>>>, WorkerError> {
   assert_eq!(l_corner.len(), h_corner.len());
 
   let dims = l_corner.len();
@@ -36,7 +26,7 @@ fn get_all_loops(
 
   let total: usize = sizes.iter().product();
   let all_loops: Arc<Mutex<Vec<Vec<DVector<f64>>>>> = Arc::new(Mutex::new(Vec::new()));
-  let errors: Arc<Mutex<Vec<OpError>>> = Arc::new(Mutex::new(Vec::new()));
+  let errors: Arc<Mutex<Vec<WorkerError>>> = Arc::new(Mutex::new(Vec::new()));
 
   (0..total)
     .into_par_iter()
@@ -50,7 +40,9 @@ fn get_all_loops(
       }
 
       let grid_point = DVector::from_column_slice(&point);
-      match get_loop_floyd(&data.m_inv, &grid_point, digits) {
+
+      println!("Progress: {:?} of {:?}", idx, total);
+      match get_loop_floyd(system, &grid_point) {
         Ok(loop_points) => {
           let Some(loop_point) = loop_points.first() else {
             return;
@@ -92,14 +84,20 @@ fn get_all_loops(
 }
 
 pub fn classification(
-  base: DMatrix<f64>,
-  digits: &SystemDigitsEnum,
-  norm: Norms,
-) -> Result<Vec<Vec<DVector<f64>>>, OpError> {
-  let data = pre_compute(base)?;
-  let (c, gamma) = find_c_gamma(&data.m_inv, norm)?;
-  let (l_corner, h_corner) = get_cover_box(&data.m_inv, c, gamma, digits)?;
-  let unique_loops: Vec<Vec<DVector<f64>>> = get_all_loops(&l_corner, &h_corner, &data, &digits)?;
+  system: &SystemEnum,
+) -> Result<Vec<Vec<DVector<f64>>>, WorkerError> {
+  let start = SystemTime::now();
+  println!("Started at {:?}", start);
+  let (l_corner, h_corner) = system.get_cover_box()?;
+  println!("Box: {:?}, {:?}", l_corner, h_corner);
+  let unique_loops: Vec<Vec<DVector<f64>>> = get_all_loops(&l_corner, &h_corner, system)?;
+  
+  println!(
+    "Duration: {:?}",
+    SystemTime::now()
+      .duration_since(start)
+      .expect("time should go forward")
+  );
 
   Ok(unique_loops)
 }
@@ -107,8 +105,7 @@ pub fn classification(
 fn has_any_loop<'a>(
   l_corner: &Vec<i32>,
   h_corner: &Vec<i32>,
-  data: &PreComputed<f64>,
-  digits: &SystemDigitsEnum
+  system: &SystemEnum
 ) -> bool {
   assert_eq!(l_corner.len(), h_corner.len());
   let dims = l_corner.len();
@@ -129,7 +126,7 @@ fn has_any_loop<'a>(
 
     let grid_point = DVector::from_column_slice(&point);
     // TODO: Handle errors
-    let loop_set = get_loop_floyd(&data.m_inv, &grid_point, &digits);
+    let loop_set = get_loop_floyd(system, &grid_point);
     let zero_point: DVector<f64> = DVector::from_element(dims, 0.0);
     match loop_set {
       Ok(ref v) => {
@@ -162,19 +159,14 @@ fn has_any_loop<'a>(
 }
 
 pub fn decision(
-  base: DMatrix<f64>,
-  digits: &SystemDigitsEnum,
-  norm: Norms,
-) -> Result<bool, OpError> {
+  system: &SystemEnum
+) -> Result<bool, WorkerError> {
   // TODO: Check if matrix is expansive, if not, false
   let start = SystemTime::now();
   println!("Started at {:?}", start);
-  let data = pre_compute(base)?;
-  let (c, gamma) = find_c_gamma(&data.m_inv, norm)?;
-  let (l_corner, h_corner) = get_cover_box(&data.m_inv, c, gamma, digits)?;
-
-  // TODO: Check if remainder value already exists, or size of h_map to be len of digits
-  let res = has_any_loop(&l_corner, &h_corner, &data, &digits);
+  let (l_corner, h_corner) = system.get_cover_box()?;
+  println!("Cover box {:?}, {:?}", l_corner, h_corner);
+  let res = has_any_loop(&l_corner, &h_corner, system);
 
   println!(
     "Duration: {:?}",
@@ -186,14 +178,63 @@ pub fn decision(
   Ok(!res)
 }
 
+pub fn get_loop_floyd<'a>(
+  system: &SystemEnum,
+  point: &DVector<f64>
+) -> Result<Vec<DVector<f64>>, WorkerError> {
+  let mut slow = system.phi(point)?;
+  let mut fast = system.phi(&system.phi(point)?)?;
+
+  while slow != fast {
+    slow = system.phi(&slow)?;
+    fast = system.phi(&system.phi(&fast)?)?;
+  }
+
+  let loop_start = slow.clone();
+
+  let mut loop_elements = vec![loop_start.clone()];
+  let mut current = system.phi(&loop_start)?;
+
+  while current != loop_start {
+    loop_elements.push(current.clone());
+    current = system.phi(&current)?;
+  }
+
+  Ok(loop_elements)
+}
+
 #[cfg(test)]
 mod tests {
-  use crate::executor::algorithm::digits::get_explicit;
+  use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_explicit}, models::Norms, systems::GenericSystem, systems_factories::{BuilderContext, GenericFactory, SystemFactory}};
 
 use super::*;
+  use nalgebra::DMatrix;
 
   #[test]
-  fn decisionTest() -> Result<(), OpError> {
+  fn floyd_test() -> Result<(), WorkerError> {
+    let base: DMatrix<f64> = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
+    let d: Vec<DVector<f64>> = vec![
+      DVector::from_row_slice(&[0.0, 0.0]),
+      DVector::from_row_slice(&[1.0, 0.0]),
+      DVector::from_row_slice(&[0.0, 1.0]),
+      DVector::from_row_slice(&[0.0, -1.0]),
+      DVector::from_row_slice(&[-6.0, 5.0]),
+    ];
+    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
+    let system = SystemEnum::Generic(GenericSystem::new(&base, digits, Norms::Infinite)?);
+
+    let start: DVector<f64> = DVector::from_column_slice(&[-6.0, 3.0]);
+    let expected = vec![
+      DVector::from_column_slice(&[0.0, 0.0])
+      ];
+    let res = get_loop_floyd(&system, &start)?;
+    assert_eq!(expected, res);
+
+    Ok(())
+  }
+
+  #[test]
+  fn decision_test() -> Result<(), WorkerError> {
     let base: DMatrix<f64> = DMatrix::from_row_slice(
       4,
       4,
@@ -216,8 +257,17 @@ use super::*;
       DVector::from_row_slice(&[-3.0, -3.0, -3.0, -3.0]),
     ];
 
-    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, digits));
-    let res = decision(base, &digits, Norms::Infinite)?;
+    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, digits).expect("digits should be fine"));
+    let builder_ctx = BuilderContext {
+      base: &base,
+      digits,
+      norm: Norms::Infinite
+    };
+    let system = GenericFactory.create(builder_ctx)?;
+    let res = match decision(&system) {
+      Ok(b) => b,
+      Err(_err) => panic!("error in decision")
+    };
     assert!(res);
     Ok(())
   }

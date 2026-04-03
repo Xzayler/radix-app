@@ -1,7 +1,7 @@
 use nalgebra::{DMatrix, DVector};
 use std::{error::Error, fmt};
 
-use crate::executor::algorithm::functions::{get_smith_values, get_vector_norm, hash_point};
+use crate::executor::algorithm::lib::{get_smith_data, get_vector_norm};
 use crate::executor::algorithm::models::Norms;
 
 #[derive(Debug)]
@@ -39,36 +39,26 @@ pub enum SystemDigitsEnum {
 }
 
 impl SystemDigits for SystemDigitsEnum {
-  fn dim(&self) -> usize {
-    match self {
-      SystemDigitsEnum::Explicit(d) => d.dim(),
-      SystemDigitsEnum::Canonical(d) => d.dim(),
-      SystemDigitsEnum::Symmetric(d) => d.dim(),
-      SystemDigitsEnum::Shifted(d) => d.dim(),
-      SystemDigitsEnum::Adjoint(d) => d.dim(),
-      SystemDigitsEnum::Dense(d) => d.dim(),
-    }
-  }
-  fn u(&self) -> &DMatrix<f64> {
-    match self {
-      SystemDigitsEnum::Explicit(d) => d.u(),
-      SystemDigitsEnum::Canonical(d) => d.u(),
-      SystemDigitsEnum::Symmetric(d) => d.u(),
-      SystemDigitsEnum::Shifted(d) => d.u(),
-      SystemDigitsEnum::Adjoint(d) => d.u(),
-      SystemDigitsEnum::Dense(d) => d.u(),
-    }
-  }
-  fn g_vec(&self) -> &Vec<i64> {
-    match self {
-      SystemDigitsEnum::Explicit(d) => d.g_vec(),
-      SystemDigitsEnum::Canonical(d) => d.g_vec(),
-      SystemDigitsEnum::Symmetric(d) => d.g_vec(),
-      SystemDigitsEnum::Shifted(d) => d.g_vec(),
-      SystemDigitsEnum::Adjoint(d) => d.g_vec(),
-      SystemDigitsEnum::Dense(d) => d.g_vec(),
-    }
-  }
+  // fn dim(&self) -> usize {
+  //   match self {
+  //     SystemDigitsEnum::Explicit(d) => d.dim(),
+  //     SystemDigitsEnum::Canonical(d) => d.dim(),
+  //     SystemDigitsEnum::Symmetric(d) => d.dim(),
+  //     SystemDigitsEnum::Shifted(d) => d.dim(),
+  //     SystemDigitsEnum::Adjoint(d) => d.dim(),
+  //     SystemDigitsEnum::Dense(d) => d.dim(),
+  //   }
+  // }
+  // fn u(&self) -> &DMatrix<f64> {
+  //   match self {
+  //     SystemDigitsEnum::Explicit(d) => d.u(),
+  //     SystemDigitsEnum::Canonical(d) => d.u(),
+  //     SystemDigitsEnum::Symmetric(d) => d.u(),
+  //     SystemDigitsEnum::Shifted(d) => d.u(),
+  //     SystemDigitsEnum::Adjoint(d) => d.u(),
+  //     SystemDigitsEnum::Dense(d) => d.u(),
+  //   }
+  // }
 
   fn get_digits_vec(&self) -> Vec<DVector<f64>> {
     match self {
@@ -94,41 +84,15 @@ impl SystemDigits for SystemDigitsEnum {
 }
 
 pub trait SystemDigits {
-  fn dim(&self) -> usize;
-  fn u(&self) -> &DMatrix<f64>;
-  fn g_vec(&self) -> &Vec<i64>;
-
   fn get_digits_vec(&self) -> Vec<DVector<f64>>;
   fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + '_>;
-
-  fn get_congruent(&self, point: &DVector<f64>) -> Option<DVector<f64>> {
-    // let h_x = h(u, g, point)?;
-    let hash = hash_point(self.dim(), self.u(), self.g_vec(), point);
-
-    self.get_digits_iter().find(|digit| hash == hash_point(self.dim(), self.u(), self.g_vec(), digit))
-  }
 }
 
 pub struct ExplicitDigits {
-  dim: usize,
-  u: DMatrix<f64>,
-  g_vec: Vec<i64>,
   digits: Vec<DVector<f64>>,
 }
 
 impl SystemDigits for ExplicitDigits {
-  fn dim(&self) -> usize {
-    self.dim
-  }
-
-  fn u(&self) -> &DMatrix<f64> {
-    &self.u
-  }
-
-  fn g_vec(&self) -> &Vec<i64> {
-    &self.g_vec
-  }
-
   fn get_digits_vec(&self) -> Vec<DVector<f64>> {
     self.digits.clone()
   }
@@ -138,33 +102,24 @@ impl SystemDigits for ExplicitDigits {
   }
 }
 
-pub fn get_explicit(base: &DMatrix<f64>, digits: Vec<DVector<f64>>) -> ExplicitDigits {
-  let dim = base.ncols();
-  let (u, g_vec) = get_smith_data(base);
-  ExplicitDigits { dim, u, g_vec, digits }
+pub fn get_explicit(base: &DMatrix<f64>, digits: Vec<DVector<f64>>) -> Result<ExplicitDigits, DigitsError> {
+  let det = base.determinant() as i64;
+  let abs_det = det.unsigned_abs() as usize;
+  if digits.len() != abs_det {
+    //TODO: Create proper error
+    return Err(DigitsError::NonInvertibleBase);
+  }
+  // TODO: Validate residue system, number of digits, so on.
+  Ok(ExplicitDigits { digits })
 }
 
 pub struct CanonicalDigits {
   dim: usize,
-  u: DMatrix<f64>,
-  g_vec: Vec<i64>,
   abs_det: u64,
   j_value: usize,
 }
 
 impl SystemDigits for CanonicalDigits {
-  fn dim(&self) -> usize {
-    self.dim
-  }
-
-  fn u(&self) -> &DMatrix<f64> {
-    &self.u
-  }
-
-  fn g_vec(&self) -> &Vec<i64> {
-    &self.g_vec
-  }
-
   fn get_digits_vec(&self) -> Vec<DVector<f64>> {
     axis_digits(self.dim, self.abs_det, self.j_value, |value| value as f64).collect()
   }
@@ -182,31 +137,16 @@ pub fn get_j_canonical(base: &DMatrix<f64>, j_value: usize) -> Result<CanonicalD
   let dim = base.ncols();
   validate_axis(dim, j_value)?;
   let abs_det = (base.determinant() as i64).unsigned_abs();
-  let (u, g_vec) = get_smith_data(base);
-  Ok(CanonicalDigits { dim, u, g_vec, abs_det, j_value })
+  Ok(CanonicalDigits { dim, abs_det, j_value })
 }
 
 pub struct SymmetricDigits {
   dim: usize,
-  u: DMatrix<f64>,
-  g_vec: Vec<i64>,
   abs_det: u64,
   j_value: usize,
 }
 
 impl SystemDigits for SymmetricDigits {
-  fn dim(&self) -> usize {
-    self.dim
-  }
-
-  fn u(&self) -> &DMatrix<f64> {
-    &self.u
-  }
-
-  fn g_vec(&self) -> &Vec<i64> {
-    &self.g_vec
-  }
-
   fn get_digits_vec(&self) -> Vec<DVector<f64>> {
     let center = (self.abs_det / 2) as f64;
     axis_digits(self.dim, self.abs_det, self.j_value, move |value| value as f64 - center).collect()
@@ -226,32 +166,17 @@ pub fn get_j_symmetric(base: &DMatrix<f64>, j_value: usize) -> Result<SymmetricD
   let dim = base.ncols();
   validate_axis(dim, j_value)?;
   let abs_det = (base.determinant() as i64).unsigned_abs();
-  let (u, g_vec) = get_smith_data(base);
-  Ok(SymmetricDigits { dim, u, g_vec, abs_det, j_value })
+  Ok(SymmetricDigits { dim, abs_det, j_value })
 }
 
 pub struct ShiftedCanonicalDigits {
   dim: usize,
-  u: DMatrix<f64>,
-  g_vec: Vec<i64>,
   abs_det: u64,
   j_value: usize,
   shift: u32,
 }
 
 impl SystemDigits for ShiftedCanonicalDigits {
-  fn dim(&self) -> usize {
-    self.dim
-  }
-
-  fn u(&self) -> &DMatrix<f64> {
-    &self.u
-  }
-
-  fn g_vec(&self) -> &Vec<i64> {
-    &self.g_vec
-  }
-
   fn get_digits_vec(&self) -> Vec<DVector<f64>> {
     let shift = self.shift;
     axis_digits(self.dim, self.abs_det, self.j_value, move |value| value as f64 - shift as f64).collect()
@@ -268,13 +193,11 @@ pub fn get_shifted_canonical(base: &DMatrix<f64>, j_value: usize, shift: u32) ->
   validate_axis(dim, j_value)?;
   let abs_det = (base.determinant() as i64).unsigned_abs();
   validate_shift(abs_det, shift)?;
-  let (u, g_vec) = get_smith_data(base);
-  Ok(ShiftedCanonicalDigits { dim, u, g_vec, abs_det, j_value, shift })
+  Ok(ShiftedCanonicalDigits { dim, abs_det, j_value, shift })
 }
 
 pub struct AdjointDigits {
   dim: usize,
-  u: DMatrix<f64>,
   g_vec: Vec<i64>,
   det: i64,
   abs_det: u64,
@@ -284,17 +207,6 @@ pub struct AdjointDigits {
 }
 
 impl SystemDigits for AdjointDigits {
-  fn dim(&self) -> usize {
-    self.dim
-  }
-
-  fn u(&self) -> &DMatrix<f64> {
-    &self.u
-  }
-
-  fn g_vec(&self) -> &Vec<i64> {
-    &self.g_vec
-  }
 
   fn get_digits_vec(&self) -> Vec<DVector<f64>> {
     let abs_determinant = self.abs_det;
@@ -344,12 +256,11 @@ pub fn get_adjoint(base: &DMatrix<f64>) -> Result<AdjointDigits, DigitsError> {
     None => return Err(DigitsError::NonInvertibleBase)
   };
   let det = base.determinant() as i64;
-  Ok(AdjointDigits { dim: base.ncols(), det, abs_det: det.unsigned_abs(), u, base: base.clone(), base_inv, u_inv, g_vec })
+  Ok(AdjointDigits { dim: base.ncols(), det, abs_det: det.unsigned_abs(), base: base.clone(), base_inv, u_inv, g_vec })
 }
 
 pub struct DenseDigits {
   dim: usize,
-  u: DMatrix<f64>,
   g_vec: Vec<i64>,
   det: i64,
   abs_det: u64,
@@ -360,20 +271,8 @@ pub struct DenseDigits {
 }
 
 impl SystemDigits for DenseDigits {
-  fn dim(&self) -> usize {
-    self.dim
-  }
-
-  fn u(&self) -> &DMatrix<f64> {
-    &self.u
-  }
-
-  fn g_vec(&self) -> &Vec<i64> {
-    &self.g_vec
-  }
-
   fn get_digits_vec(&self) -> Vec<DVector<f64>> {
-    let mut digits = AdjointDigits { dim: self.dim, det: self.det, abs_det: self.abs_det, u: self.u.clone(), base: self.base.clone(), base_inv: self.base_inv.clone(), u_inv: self.u_inv.clone(), g_vec: self.g_vec.clone() }.get_digits_vec();
+    let mut digits = AdjointDigits { dim: self.dim, det: self.det, abs_det: self.abs_det, base: self.base.clone(), base_inv: self.base_inv.clone(), u_inv: self.u_inv.clone(), g_vec: self.g_vec.clone() }.get_digits_vec();
     let step = self.abs_det as f64;
 
     loop {
@@ -437,7 +336,7 @@ pub fn get_dense(base: &DMatrix<f64>, norm: &Norms) -> Result<DenseDigits, Digit
     None => return Err(DigitsError::NonInvertibleBase)
   };
   let det = base.determinant() as i64;
-  Ok(DenseDigits { dim, det, abs_det: det.unsigned_abs(), u, base: base.clone(), base_inv, u_inv, g_vec, norm: norm.clone() })
+  Ok(DenseDigits { dim, det, abs_det: det.unsigned_abs(), base: base.clone(), base_inv, u_inv, g_vec, norm: norm.clone() })
 }
 
 fn axis_digits(
@@ -525,15 +424,6 @@ fn symmetric_modulo(value: i64, modulus: i64) -> i64 {
 
 fn round_vector(vector: &DVector<f64>) -> DVector<f64> {
   vector.map(|value| value.round())
-}
-
-fn get_smith_data(m: &DMatrix<f64>) -> (DMatrix<f64>, Vec<i64>) {
-  let (u, g) = get_smith_values(m);
-  let diagonal = (0..g.ncols())
-    .map(|index| g[(index, index)].round() as i64)
-    .collect();
-
-  (u, diagonal)
 }
 
 #[cfg(test)]

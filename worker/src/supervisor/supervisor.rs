@@ -1,11 +1,11 @@
-use crate::{db::db, executor::executor::WorkerError};
-use std::env;
+use crate::{db::db};
+use std::{env, error::Error, fmt, process::ExitStatus};
 
-pub async fn run(current_path: &str) -> Result<(), WorkerError> {
+pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
   let pool = match db::connect().await {
     Ok(pool) => pool,
     Err(err) => {
-      return Err(WorkerError::Database(err.to_string()));
+      return Err(SupervisorError::Database(err.to_string()));
     }
   };
 	const DEFAULT_POLLING_TIMEOUT: u64 = 10;
@@ -22,7 +22,7 @@ pub async fn run(current_path: &str) -> Result<(), WorkerError> {
     let pending_job = match db::pick_pending_job(&pool).await {
       Ok(res) => res,
       Err(err) => {
-        return Err(WorkerError::Database(err.to_string()));
+        return Err(SupervisorError::Database(err.to_string()));
       }
     };
     println!("{:?}", pending_job);
@@ -35,21 +35,24 @@ pub async fn run(current_path: &str) -> Result<(), WorkerError> {
           .arg(id.to_string())
           .spawn() {
             Ok(res) => res,
-            Err(err) => {
-              return Err(WorkerError::Unhandled("Couldn't spawn child".to_string()));
+            Err(_err) => {
+              return Err(SupervisorError::ChildError("Couldn't spawn child".to_string()));
             }
           };
 
         let status = match child.wait() {
+          // TODO error if status != 0
           Ok(status) => status,
           Err(err) => {
-            return Err(WorkerError::Unhandled("Child not running".into()))
+            return Err(SupervisorError::ChildError(err.to_string()))
           }
         };
 
         if !status.success() {
+          let code = status.code().unwrap_or(255);
+          println!("\nJob processing failed with code {}!", code);
+          return Err(SupervisorError::ChildCrashed(code));
           // TODO: Update job as FAILED
-          println!("\nJob processing failed!");
         } else {
           println!("\nWorker exited successfully");
         }
@@ -62,3 +65,22 @@ pub async fn run(current_path: &str) -> Result<(), WorkerError> {
     }
   }
 }
+
+#[derive(Debug)]
+pub enum SupervisorError {
+  ChildError(String),
+  ChildCrashed(i32),
+  Database(String)
+}
+
+impl fmt::Display for SupervisorError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::ChildError(msg) => write!(f, "Error spawning worker: {}", msg),
+      Self::ChildCrashed(code) => write!(f, "Child crashed with code {}", code),
+      Self::Database(msg) => write!(f, "There was an error communicating with the database: {}", msg)
+    }
+  }
+}
+
+impl Error for SupervisorError {}

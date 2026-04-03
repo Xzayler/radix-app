@@ -1,36 +1,12 @@
-use std::{error::Error, fmt};
 use nalgebra::{DMatrix, DVector};
 
-use crate::{db::{db, model::{DigitType, Job, JobType, NormType, System}}, executor::algorithm::{digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_dense, get_explicit, get_j_canonical, get_j_symmetric, get_shifted_canonical, get_symmetric}, models::Norms, operations::{classification, decision}}};
-
-
-#[derive(Debug)]
-pub enum WorkerError {
-  InvalidInput(String),
-  Database(String),
-  Operation(String),
-  Unhandled(String)
-}
-
-impl fmt::Display for WorkerError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      Self::InvalidInput(message) => write!(f, "Invalid input: {}", message),
-      Self::Database(message) => write!(f, "Database error: {}", message),
-      Self::Operation(message) => write!(f, "Operation error: {}", message),
-      Self::Unhandled(message) => write!(f, "Unexpected error: {}", message),
-    }
-  }
-}
-
-impl Error for WorkerError {}
+use crate::{db::{db, model::{DbSystem, DigitType, Job, JobType, NormType}}, executor::algorithm::{digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_dense, get_explicit, get_j_canonical, get_j_symmetric, get_shifted_canonical, get_symmetric}, models::{Norms, WorkerError}, operations::{classification, decision}, systems::SystemEnum, systems_factories::{BuilderContext, MatcherContext, SystemFactory, system_factories}}};
 
 #[derive(Debug)]
 struct JobOutput {
   is_gns: Option<bool>,
   signature: Option<Vec<i32>>
 }
-
 
 pub async fn run(job_id: i32) -> Result<(), WorkerError> {
   println!("Starting processing job id: {}", job_id);
@@ -48,8 +24,8 @@ pub async fn run(job_id: i32) -> Result<(), WorkerError> {
   };
 
   let norm = to_my_norm(&job.norm);
-  let (base, digits) = build_system_params(&job.system, &norm)?;
-  let output = build_job_output(&job, base, &digits, norm)?;
+  let system = build_system(&job.system, &norm)?;
+  let output = build_job_output(&job, &system)?;
   
   println!("Updating with {:?}", output);
   match db::update_db_with_results(&pool, job_id, job.system.id, output.is_gns, output.signature).await {
@@ -62,18 +38,25 @@ pub async fn run(job_id: i32) -> Result<(), WorkerError> {
   Ok(())
 }
 
-fn build_system_params<'a>(
-  system: &'a System,
-  norm: &'a Norms
-) -> Result<(DMatrix<f64>, SystemDigitsEnum), WorkerError> {
-  let dim = system.dimension as usize;
-  let float_base_values: Vec<f64> = system.base.iter().map(|el| *el as f64).collect();
+fn build_system(
+  db_system: &DbSystem,
+  norm: &Norms
+// ) -> Result<(DMatrix<f64>, SystemDigitsEnum), WorkerError> {
+) -> Result<SystemEnum, WorkerError> {
+  let dim = db_system.dimension as usize;
+  let float_base_values: Vec<f64> = db_system.base.iter().map(|el| *el as f64).collect();
   let base = DMatrix::from_row_slice(dim, dim, &float_base_values[..]);
 
-  let res: SystemDigitsEnum = match system.digit_type {
-    DigitType::Explicit => match &system.digits {
-      // Some(digits) => digits.iter().map(|digit| build_na_vector(digit)).collect(),
-      Some(digits) => SystemDigitsEnum::Explicit(get_explicit(&base, digits.iter().map(|digit| build_na_vector(digit)).collect())),
+  let digits: SystemDigitsEnum = match db_system.digit_type {
+    DigitType::Explicit => match &db_system.digits {
+      Some(digits) => {
+        match get_explicit(&base, digits.iter().map(|digit| build_na_vector(digit)).collect()) {
+          Ok(explicit_digits) => SystemDigitsEnum::Explicit(explicit_digits),
+          Err(err) => {
+            return Err(WorkerError::Unhandled(err.to_string()));
+          }
+        }
+      },
       None => {
         return Err(WorkerError::InvalidInput("Couldn't find digits for explicit system.".into()))
       }
@@ -84,7 +67,7 @@ fn build_system_params<'a>(
         return Err(WorkerError::Unhandled(err.to_string()));
       }
     }
-    DigitType::JCanonical => match system.digit_param {
+    DigitType::JCanonical => match db_system.digit_param {
       Some(param) => {
         match get_j_canonical(&base, param as usize) {
           Ok(digits) => SystemDigitsEnum::Canonical(digits),
@@ -103,7 +86,7 @@ fn build_system_params<'a>(
         return Err(WorkerError::Unhandled(err.to_string()));
       }
     },
-    DigitType::JSymmetric => match system.digit_param {
+    DigitType::JSymmetric => match db_system.digit_param {
       Some(param) => {
         match get_j_symmetric(&base, param as usize) {
           Ok(digits) => SystemDigitsEnum::Symmetric(digits),
@@ -116,7 +99,7 @@ fn build_system_params<'a>(
         return Err(WorkerError::InvalidInput("Couldn't find digit parameter for JSymmetric system.".into()))
       }
     },
-    DigitType::Shifted => match system.digit_param {
+    DigitType::Shifted => match db_system.digit_param {
       Some(param) => {
         match get_shifted_canonical(&base, 0, param as u32) {
           Ok(digits) => SystemDigitsEnum::Shifted(digits),
@@ -143,7 +126,29 @@ fn build_system_params<'a>(
     }
   };
 
-  Ok((base, res))
+  let matcher_ctx = MatcherContext {
+    base: &base,
+  };
+  let systems_factory = choose_system_factory(matcher_ctx)?;
+
+  let builder_ctx = BuilderContext {
+    base: &base,
+    digits,
+    norm: norm.clone()
+  };
+  let system = systems_factory.create(builder_ctx)?;
+
+  Ok(system)
+}
+
+fn choose_system_factory(ctx: MatcherContext) -> Result<Box<dyn SystemFactory>, WorkerError> {
+  for factory in system_factories() {
+    if factory.matches(&ctx) {
+      return Ok(factory);
+    }
+  }
+
+  Err(WorkerError::NoMatchingSystem)
 }
 
 fn build_na_vector(vec: &Vec<i32>) -> DVector<f64> {
@@ -159,7 +164,7 @@ fn to_my_norm(db_norm: &NormType) -> Norms {
   }
 }
 
-fn build_job_output(job: &Job, base: DMatrix<f64>, digits: &SystemDigitsEnum, norm: Norms) -> Result<JobOutput, WorkerError> {
+fn build_job_output(job: &Job, system: &SystemEnum) -> Result<JobOutput, WorkerError> {
 
   let mut job_output: JobOutput = JobOutput { 
     is_gns: None,
@@ -169,7 +174,7 @@ fn build_job_output(job: &Job, base: DMatrix<f64>, digits: &SystemDigitsEnum, no
   match job.job_type {
     JobType::Classification => {
       println!("starting classification operation");
-      let all_loops = match classification(base, digits, norm) {
+      let all_loops = match classification(system) {
         Ok(all_loops) => all_loops,
         Err(err) => {
           return Err(WorkerError::Operation(err.to_string()));
@@ -186,7 +191,7 @@ fn build_job_output(job: &Job, base: DMatrix<f64>, digits: &SystemDigitsEnum, no
     },
     JobType::Decision => {
       println!("Starting decision operation");
-      let res = match decision(base, digits, norm) {
+      let res = match decision(system) {
         Ok(res) => res,
         Err(err) => {
           return Err(WorkerError::Operation(err.to_string()));
