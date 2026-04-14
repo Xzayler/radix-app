@@ -6,9 +6,14 @@ export default function VectorInput(props: {
   label: string;
   dim: number;
   disabled: boolean;
+  value?: string;
+  setValue?: (s: string) => void;
   placeholder?: string;
 }) {
-  const [value, setValue] = createSignal<string>('');
+  // const [value, setValue] = createSignal<string>('');
+  let [validationState, setValidationState] = createSignal<
+    'valid' | 'invalid' | undefined
+  >('valid');
   const [error, setError] = createSignal<string>('');
 
   const isVectorStringValid = (vs: string): boolean => {
@@ -32,16 +37,23 @@ export default function VectorInput(props: {
     return true;
   };
 
+  const validateInput = (e: InputEvent) => {
+    const element = e.target as HTMLInputElement;
+    const isValid = isVectorStringValid(element.value);
+    if (props.disabled || isValid) {
+      setValidationState('valid');
+    } else {
+      setValidationState('invalid');
+    }
+  };
+
   return (
     <TextField
       name={props.name}
-      value={value()}
-      onChange={setValue}
-      aria-placeholder=""
-      validationState={
-        props.disabled || isVectorStringValid(value()) ? 'valid' : 'invalid'
-      }
-      class=""
+      value={props.value}
+      onChange={props.setValue}
+      validationState={validationState()}
+      onInput={validateInput}
     >
       <TextField.Label>{props.label}</TextField.Label>
       <TextField.Input

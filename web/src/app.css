@@ -46,6 +46,18 @@
   display: none;
 }
 
+@layer components {
+  .no-spinner {
+    appearance: textfield;
+  }
+
+  .no-spinner::-webkit-outer-spin-button,
+  .no-spinner::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+}
+
 @property --gradstop {
   syntax: '<percentage>';
   initial-value: 0%;

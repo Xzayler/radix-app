@@ -30,12 +30,15 @@ const generateCell = (system: System, columnType: ColumnType) => {
         </span>
       );
     case 'signature':
-      return system.signature === null ? (
-        <span class="text-foreground text-sm">—</span>
-      ) : (
-        <span class="font-mono text-xs text-foreground">
-          [{system.signature.join(', ')}]
-        </span>
+      if (!system.signature) {
+        return <span class="text-foreground text-sm">—</span>;
+      }
+      return (
+        <div class="overflow-y-scroll max-h-52">
+          <span class="font-mono text-xs text-foreground">
+            [{system.signature.join(', ')}]
+          </span>
+        </div>
       );
     case 'lastJob':
       return system.lastJob === null ? (

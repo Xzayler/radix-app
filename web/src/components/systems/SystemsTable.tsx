@@ -1,14 +1,23 @@
-import { For } from 'solid-js';
+import { createEffect, createSignal, For, Suspense } from 'solid-js';
 import SystemEntry from './SystemEntry';
 import { columns } from './systemTableColumns';
 import { getSystems } from '~/api/server';
 import { createAsync } from '@solidjs/router';
+import SystemsFilters from './SystemsFilters';
+import { SystemsFilter } from '~/lib/db/operations';
 
 export default function SystemsTable() {
-  const systems = createAsync(() => getSystems({ digits: undefined }));
+  const [filters, setFilters] = createSignal<SystemsFilter>({});
+  const systems = createAsync(() => {
+    return getSystems(filters());
+  });
 
   return (
     <div class="rounded-lg border border-faint bg-card">
+      <SystemsFilters value={filters()} setValue={setFilters} />
+      <button onclick={() => console.log('clicked: ', filters())}>
+        CLICK ME
+      </button>
       <div class="w-full overflow-x-auto">
         <table class="w-full border-collapse">
           <thead>
@@ -21,9 +30,11 @@ export default function SystemsTable() {
             </tr>
           </thead>
           <tbody>
-            <For each={systems()}>
-              {(system) => <SystemEntry system={system} />}
-            </For>
+            <Suspense fallback={<></>}>
+              <For each={systems()}>
+                {(system) => <SystemEntry system={system} />}
+              </For>
+            </Suspense>
           </tbody>
         </table>
       </div>

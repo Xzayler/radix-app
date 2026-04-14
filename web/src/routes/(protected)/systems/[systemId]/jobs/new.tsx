@@ -22,7 +22,7 @@ export default function NewSystemJob() {
   });
 
   const system = useSystemContext();
-  const [typeValue, setTypeValue] = createSignal<JobType | null | undefined>(
+  const [typeValue, setTypeValue] = createSignal<JobType | undefined>(
     'Decision',
   );
 
@@ -60,7 +60,7 @@ export default function NewSystemJob() {
               name="job-type"
               placeholder="Type"
               options={['Walk', 'Decision', 'Classification']}
-              value={typeValue}
+              value={typeValue()}
               onChange={setTypeValue}
             />
             <Show when={system()} fallback={<Loading />}>

@@ -1,5 +1,3 @@
-// ['Custom', 'Canonical', 'J-Canonical', 'Dense', 'Adjoined', 'Symmetric', 'Shifted']);
-
 export type User = {
   id: number;
   userName: string;
@@ -89,6 +87,7 @@ export type Job = {
   createdAt?: Date;
   startedAt?: Date;
   finishedAt?: Date;
+  error?: string;
 };
 
 export type NewSystem = Omit<System, 'id'>;

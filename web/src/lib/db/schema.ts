@@ -62,7 +62,7 @@ export const digitsTable = pgTable('digits', {
 export const statusEnum = pgEnum('status', [
   'Pending',
   'Running',
-  'Success',
+  'Succeeded',
   'Failed',
 ]);
 export const jobTypeEnum = pgEnum('job_type', [
@@ -104,6 +104,7 @@ export const jobsTable = pgTable(
       precision: 0,
       withTimezone: true,
     }),
+    error: text('error'),
   },
   (table) => [
     index('system_id_index').on(table.systemId),

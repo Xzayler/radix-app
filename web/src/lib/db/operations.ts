@@ -7,7 +7,7 @@ import {
   UserDbEntity,
   UserDbInsert,
 } from './dbTypes';
-import { Job, NewJob, System, User } from '~/types';
+import { DigitKind, Job, NewJob, System, User } from '~/types';
 import {
   and,
   arrayContains,
@@ -26,7 +26,10 @@ import {
 } from './converters';
 
 export type SystemsFilter = {
-  base?: number[];
+  dim?: number;
+  gns?: boolean;
+  basePrefix?: number[];
+  digitType?: DigitKind;
   digits?: number[][];
   orderBy?: {
     field: 'id' | 'lastJob';
@@ -53,13 +56,31 @@ export async function getSystemById(id: number): Promise<System | null> {
 }
 
 function buildSystemFilters(filter: SystemsFilter): SQL[] {
-  const { digits } = filter;
+  const { dim, gns, basePrefix, digitType, digits } = filter;
   const filters: SQL[] = [];
-  if (digits) {
+  if (dim) {
+    filters.push(eq(systemsTable.dimension, dim));
+  }
+  if (gns != undefined) {
+    filters.push(eq(systemsTable.isGNS, gns));
+  }
+  if (basePrefix && basePrefix.length != 0) {
+    const basePrefixStr = basePrefix.join(',');
+    filters.push(
+      eq(
+        sql`${systemsTable.base}[1:${sql.raw(basePrefix.length.toString())}]`,
+        sql`ARRAY[${sql.raw(basePrefixStr)}]`,
+      ),
+    );
+  }
+  if (digitType) {
+    filters.push(eq(systemsTable.digitType, digitType));
+  }
+  if (digitType == 'Explicit' && digits && digits.length != 0) {
     const subquery = db
       .select({ digitIds: sql<number[]>`array_agg(id)`.as('digit_ids') })
       .from(digitsTable)
-      .where(and(inArray(digitsTable.elements, digits)));
+      .where(inArray(digitsTable.elements, digits));
     filters.push(arrayContains(systemsTable.digitIds, subquery));
   }
   return filters;

@@ -1,6 +1,6 @@
 {
-  "id": "2ab98d46-76fd-43f1-bdbc-310ea61ff4ad",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "3326cb98-387f-4f5a-96a8-218e3be985ca",
+  "prevId": "2ab98d46-76fd-43f1-bdbc-310ea61ff4ad",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -130,6 +130,12 @@
         "finished_at": {
           "name": "finished_at",
           "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         }

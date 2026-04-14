@@ -1,19 +1,21 @@
 import { Select } from '@kobalte/core/select';
-import { Accessor } from 'solid-js';
+import { JSX } from 'solid-js';
 
 export default function StyledSelect<T extends string>(props: {
-  label: string;
+  label: string | JSX.Element;
   options: T[];
   name: string;
-  value?: Accessor<T | null | undefined>;
-  onChange?: (v: T | null) => void;
+  value: T;
+  onChange: (v: T | null) => void;
   defaultValue?: T;
   placeholder?: string;
 }) {
   return (
     <Select
-      value={props.value ? props.value() : undefined}
-      onChange={props.onChange}
+      value={props.value}
+      onChange={(v: T | null) => {
+        if (props.onChange) props.onChange(v);
+      }}
       options={props.options}
       defaultValue={props.defaultValue}
       placeholder={props.placeholder}
@@ -31,8 +33,8 @@ export default function StyledSelect<T extends string>(props: {
     >
       <Select.HiddenSelect required />
       <Select.Label>{props.label}</Select.Label>
-      <Select.Trigger class="flex items-center justify-between px-3 border border-ui rounded-md w-28 outline-none ">
-        <Select.Value class=" text-ellipsis whitespace-nowrap overflow-hidden data-placeholder-shown:text-foreground/50 ">
+      <Select.Trigger class="flex items-center justify-between px-3 border border-ui rounded-md min-w-max field-sizing-content outline-none ">
+        <Select.Value class="text-ellipsis whitespace-nowrap overflow-hidden data-placeholder-shown:text-foreground/50 mr-4">
           {(state) => <>{state.selectedOption()}</>}
         </Select.Value>
         <Select.Icon>v</Select.Icon>

@@ -21,7 +21,7 @@ export default function ProtectedLayout(props: { children: JSX.Element }) {
       <Show when={user()} keyed>
         <UserContext.Provider value={user}>
           <Navbar />
-          <main class="bg-background text-foreground p-5 h-dvh">
+          <main class="bg-background text-foreground p-5 min-h-dvh h-full w-full">
             {props.children}
           </main>
         </UserContext.Provider>

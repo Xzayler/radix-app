@@ -1,7 +1,7 @@
 CREATE TYPE "public"."digit_type" AS ENUM('Explicit', 'Canonical', 'JCanonical', 'Dense', 'Adjoined', 'Symmetric', 'JSymmetric', 'Shifted');--> statement-breakpoint
 CREATE TYPE "public"."job_type" AS ENUM('Walk', 'Decision', 'Classification');--> statement-breakpoint
 CREATE TYPE "public"."norm_type" AS ENUM('Infinite', 'L1', 'L2');--> statement-breakpoint
-CREATE TYPE "public"."status" AS ENUM('Pending', 'Running', 'Success', 'Failed');--> statement-breakpoint
+CREATE TYPE "public"."status" AS ENUM('Pending', 'Running', 'Succeeded', 'Failed');--> statement-breakpoint
 CREATE TABLE "digits" (
 	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "digits_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"elements" integer[] NOT NULL,
