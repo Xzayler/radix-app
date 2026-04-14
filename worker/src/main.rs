@@ -1,6 +1,8 @@
 mod executor;
 mod supervisor;
 mod db;
+mod minio;
+mod models;
 use std::{error::Error, process};
 
 #[tokio::main]
@@ -16,31 +18,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Ok(parsed) => parsed,
             Err(_) => {
               println!("Can't parse job id for worker");
-              process::exit(2);
+              process::exit(1);
             }
           }
         },
         None => {
           println!("Missing job id for worker.");
-          process::exit(2);
+          process::exit(1);
         }
       };
       // TODO: Handle errors
-      match executor::run(id).await {
-        Ok(_) => (),
-        Err(err) => {
-          println!("Worker crashed with: {err}");
-          process::exit(1);
-        }
+      if let Err(err) = executor::run(id).await {
+        println!("Executor failed with error {err}");
+        process::exit(2);
       }
+      
+      process::exit(0);
     }
     _ => {
       println!("Starting supervisor.");
-      // TODO: Handle errors
       let curr = match args.get(0) {
         Some(curr) => curr,
         None => {
-          println!("Couldn't get first arg");
+          println!("Couldn't get path arg");
           process::exit(1);
         }
       };

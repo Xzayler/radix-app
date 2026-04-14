@@ -1,13 +1,13 @@
 use nalgebra::DMatrix;
 
-use crate::executor::algorithm::{digits::SystemDigitsEnum, models::{Norms, WorkerError}, systems::{GenericSystem, SystemEnum}};
+use crate::{executor::algorithm::{digits::SystemDigitsEnum, systems::{GenericSystem, SystemEnum}}, models::{Norms, WorkerError}};
 
 pub struct MatcherContext<'a> {
   pub base: &'a DMatrix<f64>
 }
 
-pub struct BuilderContext<'a> {
-  pub base: &'a DMatrix<f64>,
+pub struct BuilderContext {
+  pub base: DMatrix<f64>,
   pub digits: SystemDigitsEnum,
   pub norm: Norms
 }

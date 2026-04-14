@@ -1,5 +1,5 @@
 use crate::{db::db};
-use std::{env, error::Error, fmt, process::ExitStatus};
+use std::{env, error::Error, fmt};
 
 pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
   let pool = match db::connect().await {
@@ -8,13 +8,13 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
       return Err(SupervisorError::Database(err.to_string()));
     }
   };
-	const DEFAULT_POLLING_TIMEOUT: u64 = 10;
+	const DEFAULT_POLLING_TIMEOUT_SECONDS: u64 = 10;
 	let polling_timeout = match env::var("POLLING_RATE") {
 		Ok(str_value) => match str::parse::<u64>(str_value.as_str()) {
 			Ok(value) => value,
-			Err(_) => DEFAULT_POLLING_TIMEOUT
+			Err(_) => DEFAULT_POLLING_TIMEOUT_SECONDS
 		}
-		Err(_) => DEFAULT_POLLING_TIMEOUT
+		Err(_) => DEFAULT_POLLING_TIMEOUT_SECONDS
 	};
 
 

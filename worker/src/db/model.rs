@@ -15,7 +15,7 @@ pub enum DigitType {
 }
 
 #[derive(Debug, sqlx::FromRow)]
-pub struct System {
+pub struct DbSystem {
   pub id: i32,
   pub dimension: i32,
   pub base: Vec<i32>,
@@ -56,13 +56,13 @@ pub enum NormType {
 #[derive(Debug)]
 pub struct Job {
   pub id: i32,
-  pub system: System,
+  pub system: DbSystem,
   pub status: JobStatus,
   pub norm: NormType,
   pub job_type: JobType,
   pub output_uri: Option<String>,
   pub started_at: Option<DateTime<Utc>>,
-  pub finished_at: Option<DateTime<Utc>>
+  pub finished_at: Option<DateTime<Utc>>,
 }
 
 impl FromRow<'_, PgRow> for Job {
@@ -75,7 +75,7 @@ impl FromRow<'_, PgRow> for Job {
       None => None
     };
     
-    let system = System {
+    let system = DbSystem {
       id: row.get("system_id"),
       dimension: row.get("dimension"),
       base: row.get("base"),
@@ -95,7 +95,7 @@ impl FromRow<'_, PgRow> for Job {
       norm: row.get("norm"),
       output_uri: row.get("output_uri"),
       started_at: row.get("started_at"),
-      finished_at: row.get("finished_at")
+      finished_at: row.get("finished_at"),
     })
   }
 }

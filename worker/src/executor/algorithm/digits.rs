@@ -1,29 +1,34 @@
 use nalgebra::{DMatrix, DVector};
 use std::{error::Error, fmt};
 
-use crate::executor::algorithm::lib::{get_smith_data, get_vector_norm};
-use crate::executor::algorithm::models::Norms;
+use crate::{executor::algorithm::lib::{get_smith_data, get_vector_norm}, models::Norms};
+
+const BASE_NAME: &str = "base";
+const U_NAME: &str = "base's smith component";
 
 #[derive(Debug)]
 pub enum DigitsError {
-  NonInvertibleBase,
+  InvalidExplicitDigitCount { expected: usize, actual: usize},
+  NonInvertible(String),
   InvalidAxis { axis: usize, dimension: usize },
   InvalidShift { shift: u32, abs_det: i64 }
 }
 
 impl fmt::Display for DigitsError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-  match self {
-    Self::NonInvertibleBase => write!(f, "the base matrix is not invertible"),
-    Self::InvalidAxis { axis, dimension } => {
-    write!(f, "axis {axis} is out of bounds for dimension {dimension}")
+    match self {
+      Self::InvalidExplicitDigitCount {expected, actual} =>
+        write!(f, "Explicit digit count is incorrect. Expected {expected}, got {actual}."),
+      Self::NonInvertible(subject) => 
+        write!(f, "The {subject} matrix is not invertible"),
+      Self::InvalidAxis { axis, dimension } =>
+        write!(f, "Axis {axis} is out of bounds for dimension {dimension}"),
+      Self::InvalidShift { shift, abs_det } => write!(
+        f,
+        "Shift {shift} must be between 0 and abs(determinant) - 1 (= {})",
+        abs_det - 1
+        )
     }
-    Self::InvalidShift { shift, abs_det } => write!(
-    f,
-    "shift {shift} must be between 0 and abs(determinant) - 1 (= {})",
-    abs_det - 1
-    )
-  }
   }
 }
 
@@ -39,27 +44,6 @@ pub enum SystemDigitsEnum {
 }
 
 impl SystemDigits for SystemDigitsEnum {
-  // fn dim(&self) -> usize {
-  //   match self {
-  //     SystemDigitsEnum::Explicit(d) => d.dim(),
-  //     SystemDigitsEnum::Canonical(d) => d.dim(),
-  //     SystemDigitsEnum::Symmetric(d) => d.dim(),
-  //     SystemDigitsEnum::Shifted(d) => d.dim(),
-  //     SystemDigitsEnum::Adjoint(d) => d.dim(),
-  //     SystemDigitsEnum::Dense(d) => d.dim(),
-  //   }
-  // }
-  // fn u(&self) -> &DMatrix<f64> {
-  //   match self {
-  //     SystemDigitsEnum::Explicit(d) => d.u(),
-  //     SystemDigitsEnum::Canonical(d) => d.u(),
-  //     SystemDigitsEnum::Symmetric(d) => d.u(),
-  //     SystemDigitsEnum::Shifted(d) => d.u(),
-  //     SystemDigitsEnum::Adjoint(d) => d.u(),
-  //     SystemDigitsEnum::Dense(d) => d.u(),
-  //   }
-  // }
-
   fn get_digits_vec(&self) -> Vec<DVector<f64>> {
     match self {
       SystemDigitsEnum::Explicit(d) => d.get_digits_vec(),
@@ -71,7 +55,7 @@ impl SystemDigits for SystemDigitsEnum {
     }
   }
 
-  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + '_> {
+  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
     match self {
       SystemDigitsEnum::Explicit(d) => d.get_digits_iter(),
       SystemDigitsEnum::Canonical(d) => d.get_digits_iter(),
@@ -85,7 +69,7 @@ impl SystemDigits for SystemDigitsEnum {
 
 pub trait SystemDigits {
   fn get_digits_vec(&self) -> Vec<DVector<f64>>;
-  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + '_>;
+  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_>;
 }
 
 pub struct ExplicitDigits {
@@ -97,7 +81,7 @@ impl SystemDigits for ExplicitDigits {
     self.digits.clone()
   }
 
-  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + '_> {
+  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
     Box::new(self.digits.clone().into_iter())
   }
 }
@@ -106,10 +90,8 @@ pub fn get_explicit(base: &DMatrix<f64>, digits: Vec<DVector<f64>>) -> Result<Ex
   let det = base.determinant() as i64;
   let abs_det = det.unsigned_abs() as usize;
   if digits.len() != abs_det {
-    //TODO: Create proper error
-    return Err(DigitsError::NonInvertibleBase);
+    return Err(DigitsError::InvalidExplicitDigitCount { expected: abs_det, actual: digits.len() });
   }
-  // TODO: Validate residue system, number of digits, so on.
   Ok(ExplicitDigits { digits })
 }
 
@@ -124,7 +106,7 @@ impl SystemDigits for CanonicalDigits {
     axis_digits(self.dim, self.abs_det, self.j_value, |value| value as f64).collect()
   }
 
-  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + '_> {
+  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
     Box::new(axis_digits(self.dim, self.abs_det, self.j_value, |value| value as f64))
   }
 }
@@ -152,7 +134,7 @@ impl SystemDigits for SymmetricDigits {
     axis_digits(self.dim, self.abs_det, self.j_value, move |value| value as f64 - center).collect()
   }
 
-  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + '_> {
+  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
     let center = (self.abs_det / 2) as f64;
     Box::new(axis_digits(self.dim, self.abs_det, self.j_value, move |value| value as f64 - center))
   }
@@ -182,7 +164,7 @@ impl SystemDigits for ShiftedCanonicalDigits {
     axis_digits(self.dim, self.abs_det, self.j_value, move |value| value as f64 - shift as f64).collect()
   }
 
-  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + '_> {
+  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
     let shift = self.shift;
     Box::new(axis_digits(self.dim, self.abs_det, self.j_value, move |value| value as f64 - shift as f64))
   }
@@ -225,7 +207,7 @@ impl SystemDigits for AdjointDigits {
     }).collect()
   }
 
-  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + '_> {
+  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
     let abs_determinant = self.abs_det;
     let det = self.det as f64;
     let adjugate = &self.base_inv * det;
@@ -246,14 +228,14 @@ impl SystemDigits for AdjointDigits {
 pub fn get_adjoint(base: &DMatrix<f64>) -> Result<AdjointDigits, DigitsError> {
   let base_inv = match base.clone().try_inverse() {
     Some(inv) => inv,
-    None => return Err(DigitsError::NonInvertibleBase)
+    None => return Err(DigitsError::NonInvertible(BASE_NAME.to_string()))
   };
 
   let (u, g_vec) = get_smith_data(&base);
   let u_inv = match u.clone().try_inverse() {
     Some(inv) => inv,
     // TODO: New Error
-    None => return Err(DigitsError::NonInvertibleBase)
+    None => return Err(DigitsError::NonInvertible(U_NAME.to_string()))
   };
   let det = base.determinant() as i64;
   Ok(AdjointDigits { dim: base.ncols(), det, abs_det: det.unsigned_abs(), base: base.clone(), base_inv, u_inv, g_vec })
@@ -316,7 +298,7 @@ impl SystemDigits for DenseDigits {
     }
   } 
 
-  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + '_> {
+  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
     let digits = self.get_digits_vec();
     Box::new(digits.into_iter())
   }
@@ -326,14 +308,13 @@ pub fn get_dense(base: &DMatrix<f64>, norm: &Norms) -> Result<DenseDigits, Digit
   let dim = base.ncols();
   let base_inv = match base.clone().try_inverse() {
     Some(inv) => inv,
-    None => return Err(DigitsError::NonInvertibleBase)
+    None => return Err(DigitsError::NonInvertible(BASE_NAME.to_string()))
   };
 
   let (u, g_vec) = get_smith_data(&base);
   let u_inv = match u.clone().try_inverse() {
     Some(inv) => inv,
-    // TODO: New Error
-    None => return Err(DigitsError::NonInvertibleBase)
+    None => return Err(DigitsError::NonInvertible(U_NAME.to_string()))
   };
   let det = base.determinant() as i64;
   Ok(DenseDigits { dim, det, abs_det: det.unsigned_abs(), base: base.clone(), base_inv, u_inv, g_vec, norm: norm.clone() })
@@ -364,7 +345,7 @@ fn validate_axis(dim: usize, axis: usize) -> Result<(), DigitsError> {
 }
 
 fn validate_shift(abs_determinant: u64, shift: u32) -> Result<(), DigitsError> {
-  if shift < 0 || shift > (abs_determinant - 1) as u32 {
+  if shift > (abs_determinant - 1) as u32 {
     Err(DigitsError::InvalidShift {
       shift,
       abs_det: abs_determinant as i64,

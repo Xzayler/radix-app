@@ -23,11 +23,13 @@ impl fmt::Display for Norms {
 pub enum WorkerError {
   // User/input errors
   NonInvertibleBase,
-  InvalidNorm(Norms),
+  InvalidNorm {norm: Norms, message: String},
   InvalidInput(String),
   
   // Infra errors
+  Environment(String),
   Database(String),
+  Minio(String),
 
   // Program errors
   NoCongruentDigit(DVector<f64>),
@@ -40,17 +42,16 @@ impl fmt::Display for WorkerError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       Self::NonInvertibleBase => write!(f, "The base is not invertible"),
-      Self::InvalidNorm(norm) => write!(f, "Norm {} can't be applied to this system", norm),
-      Self::InvalidInput(message) => write!(f, "Invalid input: {}", message),
-      Self::Database(message) => write!(f, "Database error: {}", message),
+      Self::InvalidNorm{norm, message} => write!(f, "Norm {norm} can't be applied to this system: {message}"),
+      Self::InvalidInput(message) => write!(f, "Invalid input: {message}"),
+      Self::Environment(message) => write!(f, "Config error: {message}"),
+      Self::Database(message) => write!(f, "Database error: {message}"),
+      Self::Minio(message) => write!(f, "S3 storage error: {message}"),
       Self::NoCongruentDigit(point) => write!(
-                f,
-                "A congruent digits was not found for the grid point {:?}",
-                point
-            ),
-      Self::Operation(message) => write!(f, "Operation error: {}", message),
-      Self::NoMatchingSystem => write!(f, "Could choose a system model for this input"),
-      Self::Unhandled(message) => write!(f, "Unexpected error: {}", message),
+                f, "A congruent digit was not found for the grid point {point}"),
+      Self::Operation(message) => write!(f, "Operation error: {message}"),
+      Self::NoMatchingSystem => write!(f, "Could not choose a system model for this input"),
+      Self::Unhandled(message) => write!(f, "Unexpected error: {message}"),
     }
   }
 }

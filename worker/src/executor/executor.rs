@@ -1,15 +1,17 @@
 use nalgebra::{DMatrix, DVector};
 
-use crate::{db::{db, model::{DbSystem, DigitType, Job, JobType, NormType}}, executor::algorithm::{digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_dense, get_explicit, get_j_canonical, get_j_symmetric, get_shifted_canonical, get_symmetric}, models::{Norms, WorkerError}, operations::{classification, decision}, systems::SystemEnum, systems_factories::{BuilderContext, MatcherContext, SystemFactory, system_factories}}};
+use crate::{db::{db::{self, update_db_with_job_error}, model::{DbSystem, DigitType, Job, JobType, NormType}}, executor::algorithm::lib::get_matrix_norm, minio::minio::create_client, models::{Norms, WorkerError}};
+use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_dense, get_explicit, get_j_canonical, get_j_symmetric, get_shifted_canonical, get_symmetric}, operations::{classification, decision}, systems::SystemEnum, systems_factories::{BuilderContext, MatcherContext, SystemFactory, system_factories}};
+use crate::minio::minio::upload_job_results;
 
 #[derive(Debug)]
 struct JobOutput {
   is_gns: Option<bool>,
-  signature: Option<Vec<i32>>
+  signature: Option<Vec<i32>>,
+  all_loops: Option<Vec<Vec<DVector<f64>>>>
 }
 
 pub async fn run(job_id: i32) -> Result<(), WorkerError> {
-  println!("Starting processing job id: {}", job_id);
   let pool = match db::connect().await {
     Ok(pool) => pool,
     Err(err) => {
@@ -24,28 +26,55 @@ pub async fn run(job_id: i32) -> Result<(), WorkerError> {
   };
 
   let norm = to_my_norm(&job.norm);
-  let system = build_system(&job.system, &norm)?;
-  let output = build_job_output(&job, &system)?;
-  
-  println!("Updating with {:?}", output);
-  match db::update_db_with_results(&pool, job_id, job.system.id, output.is_gns, output.signature).await {
-    Ok(_) => (), 
+  let system = match build_system(&job.system, &norm) {
+    Ok(system) => system,
     Err(err) => {
-      return Err(WorkerError::Database(err.to_string()));
+      let res = update_db_with_job_error(&pool, job_id, err.to_string()).await;
+      if let Err(err) = res {
+        println!("Couldn't update job {job_id} with error {err}");
+      }
+      return Err(err);
     }
+  };
+  let output = match build_job_output(&job, &system) {
+    Ok(output) => output,
+    Err(err) => {
+      let res = update_db_with_job_error(&pool, job_id, err.to_string()).await;
+      if let Err(err) = res {
+        println!("Couldn't update job {job_id} with error {err}");
+      }
+      return Err(err);
+    }
+  };
+  
+  let mut output_uri = None;
+  if let Some(loops) = output.all_loops {
+    println!("Uploading to minio.");
+    output_uri = Some(upload_job_results(job_id, &loops).await?)
   }
 
-  Ok(())
+  println!("Updating db");
+  match db::update_db_with_results(&pool, job_id, job.system.id, output.is_gns, output.signature, output_uri).await {
+    Ok(_) => Ok(()), 
+    Err(err) => Err(WorkerError::Database(err.to_string()))
+  }
 }
 
 fn build_system(
   db_system: &DbSystem,
   norm: &Norms
-// ) -> Result<(DMatrix<f64>, SystemDigitsEnum), WorkerError> {
 ) -> Result<SystemEnum, WorkerError> {
+  if db_system.dimension <= 0 {
+    return Err(WorkerError::InvalidInput("Dimension must be positive".to_string()));
+  }
   let dim = db_system.dimension as usize;
   let float_base_values: Vec<f64> = db_system.base.iter().map(|el| *el as f64).collect();
   let base = DMatrix::from_row_slice(dim, dim, &float_base_values[..]);
+
+  let base_norm = get_matrix_norm(&base, norm);
+  if base_norm <= 1.0 {
+    return Err(WorkerError::InvalidNorm {norm: norm.clone(), message: "Base is not expansive".to_string()});
+  }
 
   let digits: SystemDigitsEnum = match db_system.digit_type {
     DigitType::Explicit => match &db_system.digits {
@@ -53,7 +82,7 @@ fn build_system(
         match get_explicit(&base, digits.iter().map(|digit| build_na_vector(digit)).collect()) {
           Ok(explicit_digits) => SystemDigitsEnum::Explicit(explicit_digits),
           Err(err) => {
-            return Err(WorkerError::Unhandled(err.to_string()));
+            return Err(WorkerError::InvalidInput(err.to_string()));
           }
         }
       },
@@ -64,15 +93,18 @@ fn build_system(
     DigitType::Canonical => match get_canonical(&base) {
       Ok(digits) => SystemDigitsEnum::Canonical(digits),
       Err(err) => {
-        return Err(WorkerError::Unhandled(err.to_string()));
+        return Err(WorkerError::InvalidInput(err.to_string()));
       }
     }
     DigitType::JCanonical => match db_system.digit_param {
       Some(param) => {
+        if param < 0 {
+          return Err(WorkerError::InvalidInput("Parameter for canonical digits must not be negative.".to_string()))
+        };
         match get_j_canonical(&base, param as usize) {
           Ok(digits) => SystemDigitsEnum::Canonical(digits),
           Err(err) => {
-            return Err(WorkerError::Unhandled(err.to_string()));
+            return Err(WorkerError::InvalidInput(err.to_string()));
           }
         }
       },
@@ -88,10 +120,13 @@ fn build_system(
     },
     DigitType::JSymmetric => match db_system.digit_param {
       Some(param) => {
+        if param < 0 {
+          return Err(WorkerError::InvalidInput("Parameter for j-symmetric digits must not be negative.".to_string()))
+        };
         match get_j_symmetric(&base, param as usize) {
           Ok(digits) => SystemDigitsEnum::Symmetric(digits),
           Err(err) => {
-            return Err(WorkerError::Unhandled(err.to_string()));
+            return Err(WorkerError::InvalidInput(err.to_string()));
           }
         }
       },
@@ -101,10 +136,13 @@ fn build_system(
     },
     DigitType::Shifted => match db_system.digit_param {
       Some(param) => {
+        if param < 0 {
+          return Err(WorkerError::InvalidInput("Parameter for shifted digits must not be negative.".to_string()))
+        };
         match get_shifted_canonical(&base, 0, param as u32) {
           Ok(digits) => SystemDigitsEnum::Shifted(digits),
           Err(err) => {
-            return Err(WorkerError::Unhandled(err.to_string()));
+            return Err(WorkerError::InvalidInput(err.to_string()));
           }
         }
       },
@@ -115,13 +153,13 @@ fn build_system(
     DigitType::Adjoined => match get_adjoint(&base) {
       Ok(digits) => SystemDigitsEnum::Adjoint(digits),
       Err(err) => {
-        return Err(WorkerError::Unhandled(err.to_string()));
+        return Err(WorkerError::InvalidInput(err.to_string()));
       }
     },
     DigitType::Dense => match get_dense(&base, norm) {
       Ok(digits) => SystemDigitsEnum::Dense(digits),
       Err(err) => {
-        return Err(WorkerError::Unhandled(err.to_string()));
+        return Err(WorkerError::InvalidInput(err.to_string()));
       }
     }
   };
@@ -132,7 +170,7 @@ fn build_system(
   let systems_factory = choose_system_factory(matcher_ctx)?;
 
   let builder_ctx = BuilderContext {
-    base: &base,
+    base: base,
     digits,
     norm: norm.clone()
   };
@@ -168,7 +206,8 @@ fn build_job_output(job: &Job, system: &SystemEnum) -> Result<JobOutput, WorkerE
 
   let mut job_output: JobOutput = JobOutput { 
     is_gns: None,
-    signature: None
+    signature: None,
+    all_loops: None
   };
 
   match job.job_type {
@@ -180,7 +219,6 @@ fn build_job_output(job: &Job, system: &SystemEnum) -> Result<JobOutput, WorkerE
           return Err(WorkerError::Operation(err.to_string()));
         }
       };
-      // TODO: Store in minio
       let loop_sizes: Vec<usize> = all_loops.iter().map(|loop_| loop_.len()).collect();
       let mut signature = vec![0; *loop_sizes.iter().max().unwrap_or(&0)];
       for size in &loop_sizes {
@@ -188,6 +226,7 @@ fn build_job_output(job: &Job, system: &SystemEnum) -> Result<JobOutput, WorkerE
       }
       job_output.is_gns = Some(signature.len() == 1 && signature[0] == 1);
       job_output.signature = Some(signature);
+      job_output.all_loops = Some(all_loops);
     },
     JobType::Decision => {
       println!("Starting decision operation");

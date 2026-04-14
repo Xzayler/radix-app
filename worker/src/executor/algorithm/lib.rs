@@ -1,4 +1,5 @@
-use crate::executor::algorithm::{digits::{SystemDigits, SystemDigitsEnum}, models::{Norms, WorkerError}};
+use crate::{executor::algorithm::digits::{SystemDigits, SystemDigitsEnum}, models::{Norms, WorkerError}};
+use rayon::prelude::*;
 use std::collections::HashMap;
 
 extern crate nalgebra as na;
@@ -72,14 +73,11 @@ pub fn build_h_i<'a>(
   g_prods: &Vec<i64>,
   digits: &SystemDigitsEnum,
 ) -> HashMap<i64, DVector<f64>> {
-  let mut h_map: HashMap<i64, DVector<f64>> = HashMap::new();
-  let iter = digits.get_digits_iter();
-
-  for digit in iter {
-    let key = hash_point(dim, s, u, g, g_prods, &digit);
-    h_map.insert(key, digit);
-  }
-  h_map
+  digits
+    .get_digits_iter()
+    .par_bridge()
+    .map(|digit| (hash_point(dim, s, u, g, g_prods, &digit), digit))
+    .collect()
 }
 
 pub fn get_vector_norm(v: &DVector<f64>, norm: &Norms) -> f64 {
@@ -109,7 +107,7 @@ fn find_c_gamma_spectral(m_inv: &DMatrix<f64>) -> Result<(usize, f64), WorkerErr
   let mut c: usize = 1;
   let inv_norm = spectral_norm(&m_inv);
   if inv_norm >= 1.0 {
-    return Err(WorkerError::InvalidNorm(Norms::L2));
+    return Err(WorkerError::InvalidNorm {norm: Norms::L2, message: "Base inverse not contractive".to_string()});
   }
 
   let mut m_pow = m_inv.clone();
@@ -124,12 +122,12 @@ fn find_c_gamma_spectral(m_inv: &DMatrix<f64>) -> Result<(usize, f64), WorkerErr
   Ok((c, gamma))
 }
 
-fn find_c_gamma_norm(m_inv: &DMatrix<f64>, norm: &impl Norm<f64>, norm_type: Norms) -> Result<(usize, f64), WorkerError> {
+fn find_c_gamma_norm(m_inv: &DMatrix<f64>, norm: &impl Norm<f64>, norm_type: &Norms) -> Result<(usize, f64), WorkerError> {
   let norm_threshold: f64 = 0.01;
   let mut c: usize = 1;
   let inv_norm = m_inv.apply_norm(norm);
   if inv_norm >= 1.0 {
-    return Err(WorkerError::InvalidNorm(norm_type));
+    return Err(WorkerError::InvalidNorm {norm: norm_type.clone(), message: "Base inverse not contractive".to_string()});
   }
 
   let mut m_pow = m_inv.clone();
@@ -146,67 +144,14 @@ fn find_c_gamma_norm(m_inv: &DMatrix<f64>, norm: &impl Norm<f64>, norm_type: Nor
 pub fn find_c_gamma(m_inv: &DMatrix<f64>, norm: &Norms) -> Result<(usize, f64), WorkerError> {
   match norm {
     Norms::L2 => find_c_gamma_spectral(m_inv),
-    Norms::Infinite => find_c_gamma_norm(m_inv, &UniformNorm, Norms::Infinite),
-    Norms::L1 => find_c_gamma_norm(m_inv, &LpNorm(1), Norms::L1),
+    Norms::Infinite => find_c_gamma_norm(m_inv, &UniformNorm, &Norms::Infinite),
+    Norms::L1 => find_c_gamma_norm(m_inv, &LpNorm(1), &Norms::L1),
   }
 }
 
-// pub fn get_cover_box(
-//   m_inv: &DMatrix<f64>,
-//   c: usize,
-//   gamma: f64,
-//   digits: &SystemDigitsEnum,
-// ) -> Result<(Vec<i32>, Vec<i32>), WorkerError> {
-//   let mut m_pow = m_inv.clone();
-//   let dim = m_inv.ncols();
-
-//   let mut sum_xi: DVector<f64> = DVector::from_element(dim, 0.0);
-//   let mut sum_eta: DVector<f64> = DVector::from_element(dim, 0.0);
-
-//   for j in 0..c {
-//     let mut iter = digits.get_digits_iter();
-//     let first = iter.next().ok_or(WorkerError::Unhandled("No digits found".to_string()))?;
-
-//     let mut xi_j = &m_pow * &first;
-//     let mut eta_j = xi_j.clone();
-
-//     for digit in iter {
-//       let prod = &m_pow * &digit;
-//       for m in 0..dim {
-//         if prod[m] > xi_j[m] {
-//           xi_j[m] = prod[m];
-//         }
-//         if prod[m] < eta_j[m] {
-//           eta_j[m] = prod[m];
-//         }
-//       }
-//     }
-
-//     sum_xi += xi_j;
-//     sum_eta += eta_j;
-
-//     if j < c - 1 {
-//       m_pow = &m_pow * m_inv;
-//     }
-//   }
-
-
-//   // println!("Sum_xi: {:?}", sum_xi);
-//   // println!("Sum_eta: {:?}", sum_eta);
-
-//   let mut l: Vec<i32> = vec![0; dim];
-//   let mut u: Vec<i32> = vec![0; dim];
-//   for m in 0..dim {
-//     l[m] = (-1.0 * (&gamma * &sum_eta[m])).ceil() as i32;
-//     u[m] = (-1.0 * (&gamma * &sum_xi[m])).floor() as i32;
-//   }
-
-//   Ok((u, l))
-// }
-
-// #[cfg(test)]
-// mod tests {
-//   use super::*;
-//   use crate::executor::algorithm::digits::{get_explicit};
-
-// }
+pub fn satisfies_unit_condition(base: &DMatrix<f64>) -> bool {
+  let dim: usize = base.ncols();
+  let identity_matrix: DMatrix<f64> = DMatrix::identity(dim, dim);
+  let det = (identity_matrix - base).determinant().round();
+  det != 1.0 && det != -1.0
+}

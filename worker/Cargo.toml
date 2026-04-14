@@ -9,3 +9,5 @@ sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio", "runtime-to
 algebraeon = "0.0.16"
 nalgebra = "0.34.1"
 rayon = "1.11"
+aws-sdk-s3 = "1.122.0"
+aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }

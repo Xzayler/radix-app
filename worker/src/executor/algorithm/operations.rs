@@ -3,12 +3,12 @@ use std::sync::{Arc, Mutex};
 use nalgebra::DVector;
 use std::time::SystemTime;
 
-use crate::executor::algorithm::{models::WorkerError, systems::{System, SystemEnum}};
+use crate::{executor::algorithm::{lib::satisfies_unit_condition, systems::{System, SystemEnum}}, models::WorkerError};
 
 use rayon::prelude::*;
 
 fn loop_contains_point(loop_points: &[DVector<f64>], point: &DVector<f64>) -> bool {
-  loop_points.iter().any(|loop_point| loop_point == point)
+  loop_points.contains(point)
 }
 
 fn get_all_loops(
@@ -41,7 +41,6 @@ fn get_all_loops(
 
       let grid_point = DVector::from_column_slice(&point);
 
-      println!("Progress: {:?} of {:?}", idx, total);
       match get_loop_floyd(system, &grid_point) {
         Ok(loop_points) => {
           let Some(loop_point) = loop_points.first() else {
@@ -161,7 +160,11 @@ fn has_any_loop<'a>(
 pub fn decision(
   system: &SystemEnum
 ) -> Result<bool, WorkerError> {
-  // TODO: Check if matrix is expansive, if not, false
+
+  if !satisfies_unit_condition(system.get_base()) {
+    return Ok(false);
+  }
+
   let start = SystemTime::now();
   println!("Started at {:?}", start);
   let (l_corner, h_corner) = system.get_cover_box()?;
@@ -205,7 +208,7 @@ pub fn get_loop_floyd<'a>(
 
 #[cfg(test)]
 mod tests {
-  use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_explicit}, models::Norms, systems::GenericSystem, systems_factories::{BuilderContext, GenericFactory, SystemFactory}};
+  use crate::{executor::algorithm::{digits::{SystemDigitsEnum, get_explicit}, systems::GenericSystem, systems_factories::{BuilderContext, GenericFactory, SystemFactory}}, models::Norms};
 
 use super::*;
   use nalgebra::DMatrix;
@@ -221,7 +224,7 @@ use super::*;
       DVector::from_row_slice(&[-6.0, 5.0]),
     ];
     let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
-    let system = SystemEnum::Generic(GenericSystem::new(&base, digits, Norms::Infinite)?);
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, Norms::Infinite)?);
 
     let start: DVector<f64> = DVector::from_column_slice(&[-6.0, 3.0]);
     let expected = vec![
@@ -259,7 +262,7 @@ use super::*;
 
     let digits = SystemDigitsEnum::Explicit(get_explicit(&base, digits).expect("digits should be fine"));
     let builder_ctx = BuilderContext {
-      base: &base,
+      base: base,
       digits,
       norm: Norms::Infinite
     };
