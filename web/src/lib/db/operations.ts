@@ -1,7 +1,15 @@
 'use server';
 import { db } from './db';
-import { usersTable, systemsTable, digitsTable, jobsTable } from './schema';
 import {
+  usersTable,
+  systemsTable,
+  digitsTable,
+  jobsTable,
+  favouritesTable,
+} from './schema';
+import {
+  FavouriteDbEntity,
+  FavouriteDbInsert,
   JobDbInsert,
   SystemDbInsert,
   UserDbEntity,
@@ -37,7 +45,10 @@ export type SystemsFilter = {
   };
 };
 
-export async function getSystemById(id: number): Promise<System | null> {
+export async function getSystemById(
+  id: number,
+  userId: number,
+): Promise<System | null> {
   const systems = await db
     .select({
       ...getTableColumns(systemsTable),
@@ -46,6 +57,14 @@ export async function getSystemById(id: number): Promise<System | null> {
         FROM ${digitsTable} WHERE ${digitsTable}.${digitsTable.id} = ANY(${systemsTable}.${systemsTable.digitIds}))`.as(
         'digits',
       ),
+      isFavourited: sql<boolean>`
+        EXISTS (
+          SELECT 1
+          FROM ${favouritesTable}
+          WHERE ${favouritesTable.systemId} = ${id}
+          AND ${favouritesTable.userId} =  ${userId}
+        )
+        `.as('is_favourited'),
     })
     .from(systemsTable)
     .where(eq(systemsTable.id, id));
@@ -86,7 +105,10 @@ function buildSystemFilters(filter: SystemsFilter): SQL[] {
   return filters;
 }
 
-export async function getSystems(params: SystemsFilter): Promise<System[]> {
+export async function getSystems(
+  params: SystemsFilter,
+  userId: number,
+): Promise<System[]> {
   const filters = buildSystemFilters(params);
   const systems = await db
     .select({
@@ -96,6 +118,14 @@ export async function getSystems(params: SystemsFilter): Promise<System[]> {
         FROM ${digitsTable} WHERE ${digitsTable}.${digitsTable.id} = ANY(${systemsTable}.${systemsTable.digitIds}))`.as(
         'digits',
       ),
+      isFavourited: sql<boolean>`
+        EXISTS (
+          SELECT 1
+          FROM ${favouritesTable}
+          WHERE ${favouritesTable.systemId} = ${systemsTable.id}
+          AND ${favouritesTable.userId} =  ${userId}
+        )
+        `.as('is_favourited'),
     })
     .from(systemsTable)
     .where(and(...filters));
@@ -147,9 +177,13 @@ export async function insertSystem(
 
   const res = (await db.insert(systemsTable).values(dbEntity).returning())[0];
   if (system.digits.type == 'Explicit') {
-    return systemFromDbEntity({ ...res, digits: system.digits.values });
+    return systemFromDbEntity({
+      ...res,
+      digits: system.digits.values,
+      isFavourited: false,
+    });
   }
-  return systemFromDbEntity(res);
+  return systemFromDbEntity({ ...res, isFavourited: false });
 }
 
 export async function insertUser(user: UserDbInsert): Promise<User> {
@@ -220,4 +254,20 @@ export async function getJobs(params: JobsFilter): Promise<Job[]> {
     .orderBy(asc(jobsTable.createdAt));
 
   return res.map((r) => jobFromDbEntity(r));
+}
+
+export async function favouriteSystem(systemId: number, userId: number) {
+  const favourite: FavouriteDbInsert = { systemId, userId };
+  await db.insert(favouritesTable).values(favourite);
+}
+
+export async function unFavouriteSystem(systemId: number, userId: number) {
+  await db
+    .delete(favouritesTable)
+    .where(
+      and(
+        eq(favouritesTable.systemId, systemId),
+        eq(favouritesTable.userId, userId),
+      ),
+    );
 }

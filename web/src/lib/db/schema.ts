@@ -7,6 +7,7 @@ import {
   index,
   timestamp,
   boolean,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 
 export const usersTable = pgTable(
@@ -58,6 +59,42 @@ export const digitsTable = pgTable('digits', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   elements: integer('elements').array().notNull().unique(),
 });
+
+export const favouritesTable = pgTable(
+  'favourites',
+  {
+    userId: integer('user_id')
+      .references(() => usersTable.id, {
+        onDelete: 'cascade',
+      })
+      .notNull(),
+    systemId: integer('system_id')
+      .references(() => systemsTable.id, {
+        onDelete: 'cascade',
+      })
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.systemId] })],
+);
+
+export const userRelations = relations(usersTable, ({ many }) => ({
+  favourites: many(favouritesTable),
+}));
+
+export const systemsRelations = relations(systemsTable, ({ many }) => ({
+  favouritedBy: many(usersTable),
+}));
+
+export const favouritesRelations = relations(favouritesTable, ({ one }) => ({
+  user: one(usersTable, {
+    fields: [favouritesTable.userId],
+    references: [usersTable.id],
+  }),
+  system: one(systemsTable, {
+    fields: [favouritesTable.systemId],
+    references: [systemsTable.id],
+  }),
+}));
 
 export const statusEnum = pgEnum('status', [
   'Pending',
@@ -125,8 +162,12 @@ export const jobsRelations = relations(jobsTable, ({ one }) => ({
 
 export const schema = {
   users: usersTable,
+  userRelations,
   systems: systemsTable,
-  digitsTable,
+  systemsRelations,
+  digits: digitsTable,
+  favourites: favouritesTable,
+  favouritesRelations,
   jobs: jobsTable,
   jobsRelations,
 };

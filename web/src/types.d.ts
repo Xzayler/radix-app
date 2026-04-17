@@ -70,9 +70,10 @@ export type System = {
   isGns: boolean | null;
   signature: number[] | null;
   lastJob: Date | null;
+  isFavourited: boolean;
 };
 
-export type JobStatus = 'Pending' | 'Running' | 'Success' | 'Failed';
+export type JobStatus = 'Pending' | 'Running' | 'Succeeded' | 'Failed';
 export type JobType = 'Walk' | 'Decision' | 'Classification';
 
 export type Job = {

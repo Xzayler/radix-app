@@ -8,6 +8,12 @@ CREATE TABLE "digits" (
 	CONSTRAINT "digits_elements_unique" UNIQUE("elements")
 );
 --> statement-breakpoint
+CREATE TABLE "favourites" (
+	"user_id" integer NOT NULL,
+	"system_id" integer NOT NULL,
+	CONSTRAINT "favourites_user_id_system_id_pk" PRIMARY KEY("user_id","system_id")
+);
+--> statement-breakpoint
 CREATE TABLE "jobs" (
 	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "jobs_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"user_id" integer NOT NULL,
@@ -19,7 +25,8 @@ CREATE TABLE "jobs" (
 	"output_uri" text,
 	"created_at" timestamp (0) with time zone DEFAULT now() NOT NULL,
 	"started_at" timestamp (0) with time zone,
-	"finished_at" timestamp (0) with time zone
+	"finished_at" timestamp (0) with time zone,
+	"error" text
 );
 --> statement-breakpoint
 CREATE TABLE "systems" (
@@ -42,6 +49,8 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_user_name_unique" UNIQUE("user_name")
 );
 --> statement-breakpoint
+ALTER TABLE "favourites" ADD CONSTRAINT "favourites_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "favourites" ADD CONSTRAINT "favourites_system_id_systems_id_fk" FOREIGN KEY ("system_id") REFERENCES "public"."systems"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_system_id_systems_id_fk" FOREIGN KEY ("system_id") REFERENCES "public"."systems"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "systems" ADD CONSTRAINT "systems_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

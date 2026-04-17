@@ -16,11 +16,11 @@ import {
 import {
   JobDbEntity,
   JobDbInsert,
-  SystemDbEntityWithDigits,
+  SystemDbEntityWithDetails,
   SystemDbInsert,
 } from './dbTypes';
 
-function convertDigits(system: SystemDbEntityWithDigits): Digits {
+function convertDigits(system: SystemDbEntityWithDetails): Digits {
   switch (system.digitType) {
     case 'Explicit':
       const e: ExplicitDigits = {
@@ -75,7 +75,9 @@ function chunkArray(array: number[], n: number) {
   return Array.from({ length: n }, (_, i) => array.slice(i * n, i * n + n));
 }
 
-export function systemFromDbEntity(dbEntity: SystemDbEntityWithDigits): System {
+export function systemFromDbEntity(
+  dbEntity: SystemDbEntityWithDetails,
+): System {
   const dim = dbEntity.dimension;
   const system: System = {
     id: dbEntity.id,
@@ -85,6 +87,7 @@ export function systemFromDbEntity(dbEntity: SystemDbEntityWithDigits): System {
     isGns: dbEntity.isGNS,
     signature: dbEntity.signature,
     lastJob: dbEntity.lastJob,
+    isFavourited: dbEntity.isFavourited,
   };
   return system;
 }
@@ -151,7 +154,6 @@ export function dbInsertFromJob(
     jobType: job.jobType,
     norm: job.norm,
     walkFrom: gridPointId,
-    outputUri: job.outputUri,
   };
   return dbEntity;
 }

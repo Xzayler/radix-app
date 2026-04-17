@@ -12,6 +12,8 @@ import {
   getSystems as gs,
   getJobs as gj,
   insertJob,
+  favouriteSystem as fs,
+  unFavouriteSystem as ufs,
 } from '~/lib/db/operations';
 import { parseInputFile } from '~/lib/utils/fileParser';
 import { NewJob, System } from '~/types';
@@ -57,7 +59,7 @@ export const queueJob = async (formData: FormData) => {
     throw new Error('System id has to be an integer number');
   }
 
-  const system = await gsId(systemId);
+  const system = await gsId(systemId, user.id);
   if (!system) {
     throw new Error('This system does not exist');
   }
@@ -113,3 +115,20 @@ export const queueJob = async (formData: FormData) => {
   }
 };
 export const getJobs = gj;
+export const favourite = async (systemId: number) => {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('No user logged in');
+  }
+
+  await fs(systemId, user.id);
+};
+
+export const unFavourite = async (systemId: number) => {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('No user logged in');
+  }
+
+  await ufs(systemId, user.id);
+};
