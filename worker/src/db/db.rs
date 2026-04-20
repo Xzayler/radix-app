@@ -135,7 +135,7 @@ pub async fn update_db_with_job_error(pool: &sqlx::PgPool, job_id: i32, err: Str
   let res = sqlx::query(
     format!("UPDATE jobs
     SET status = 'Failed',
-      error = {error_string}
+      error = '{error_string}',
       finished_at = NOW()
     WHERE id = {job_id}"
     ).as_str()

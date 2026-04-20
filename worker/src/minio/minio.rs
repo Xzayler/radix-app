@@ -38,7 +38,7 @@ pub async fn create_client() -> Result<Client,WorkerError> {
 pub async fn upload_job_results(job_id: i32, loops: &Vec<Vec<DVector<f64>>>) -> Result<String, WorkerError> {
   let client = create_client().await?;
   let bucket = env::var("MINIO_BUCKET").map_err(|err| WorkerError::Environment("MINIO_BUCKET must be set: ".to_string() + err.to_string().as_str()))?;
-  let key = format!("results/{job_id}.json");
+  let key = format!("{job_id}.json");
   let temp_path = temp_output_path(job_id)?;
 
   let upload_result = async {
