@@ -16,6 +16,10 @@ export async function getDownloadUrl(key: string): Promise<string> {
       bucketName,
       key,
       DOWNLOAD_URL_EXPIRY_SECONDS,
+      {
+        'response-content-disposition': `attachment; filename="${key}"`,
+        'response-content-type': 'application/octet-stream',
+      },
     );
   } catch (e) {
     throw new Error('Failed to generate presigned url');

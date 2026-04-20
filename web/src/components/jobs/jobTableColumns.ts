@@ -5,7 +5,8 @@ export type ColumnType =
   | 'status'
   | 'output'
   | 'startedAt'
-  | 'finishedAt';
+  | 'finishedAt'
+  | 'error';
 
 export type JobColumn = {
   type: ColumnType;
@@ -16,6 +17,7 @@ export const columns: JobColumn[] = [
   { type: 'jobType', label: 'Type' },
   { type: 'norm', label: 'Norm' },
   { type: 'status', label: 'Status' },
+  { type: 'error', label: 'Error' },
   { type: 'startedAt', label: 'Started' },
   { type: 'finishedAt', label: 'Finished' },
   { type: 'output', label: 'Output' },

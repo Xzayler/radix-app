@@ -4,7 +4,6 @@ import { createEffect, createSignal, Show, Suspense } from 'solid-js';
 import { queueJob } from '~/api/server';
 import StyledSelect from '~/components/forms/StyledSelect';
 import VectorInput from '~/components/forms/VectorInput';
-import Loading from '~/components/shared/Loading';
 import { JobType, Norm } from '~/types';
 
 export default function NewSystemJob(props: {
@@ -51,8 +50,6 @@ export default function NewSystemJob(props: {
             options={['Infinite', 'L1', 'L2']}
             defaultValue={'Infinite'}
           />
-          {/* <div class="border-l border-dashed rounded-2xl border-foreground h-fulsl mx-2"></div> */}
-          {/* <div class="flex"> */}
           <StyledSelect<JobType>
             label="JobType"
             name="job-type"

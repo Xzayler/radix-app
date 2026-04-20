@@ -5,6 +5,10 @@ function parseInput(v: string): number | undefined {
   if (v.length == 0) {
     return undefined;
   }
+  const n = parseInt(v);
+  if (Number.isNaN(n) || n == 0) {
+    return undefined;
+  }
   return parseInt(v);
 }
 
@@ -26,7 +30,7 @@ export default function NaturalNumberInput(props: {
       onChange={(v: string) => {
         props.onChange(parseInput(v));
       }}
-      minValue={1}
+      minValue={0}
     >
       <NumberField.Label>{props.label}</NumberField.Label>
       <NumberField.Input

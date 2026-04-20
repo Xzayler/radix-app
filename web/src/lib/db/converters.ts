@@ -142,7 +142,8 @@ export function jobFromDbEntity(
     outputUri: dbEntity.outputUri ?? undefined,
     createdAt: dbEntity.createdAt,
     startedAt: dbEntity.startedAt ?? undefined,
-    finishedAt: dbEntity.startedAt ?? undefined,
+    finishedAt: dbEntity.finishedAt ?? undefined,
+    error: dbEntity.error ?? undefined,
   };
   return job;
 }

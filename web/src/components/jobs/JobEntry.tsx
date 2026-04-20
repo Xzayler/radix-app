@@ -1,6 +1,6 @@
 import { Job } from '~/types';
 import { columns, ColumnType } from './jobTableColumns';
-import { createSignal } from 'solid-js';
+import { Accessor, createSignal, For } from 'solid-js';
 import { Button } from '@kobalte/core/button';
 import { A, createAsync } from '@solidjs/router';
 import { getDownloadUrl } from '~/api/server';
@@ -9,7 +9,7 @@ import DownloadIcon from '../shared/DownloadIcon';
 const generateCell = (
   job: Job,
   columnType: ColumnType,
-  downloadUrl?: string,
+  downloadUrl: string | null,
 ) => {
   switch (columnType) {
     case 'jobType':
@@ -28,7 +28,7 @@ const generateCell = (
           {job.startedAt.toLocaleString()}
         </span>
       ) : (
-        <span class="text-foreground text-sm">—</span>
+        <span class="text-foreground text-sm">-</span>
       );
     case 'finishedAt':
       return job.finishedAt ? (
@@ -36,13 +36,13 @@ const generateCell = (
           {job.finishedAt.toLocaleString()}
         </span>
       ) : (
-        <span class="text-foreground text-sm">—</span>
+        <span class="text-foreground text-sm">-</span>
       );
     case 'output':
       return (
         <Button
           class="text-accent aspect-square h-8 cursor-pointer disabled:text-faint disabled:cursor-not-allowed "
-          disabled={downloadUrl === undefined}
+          disabled={downloadUrl === null}
         >
           {downloadUrl ? (
             <A href={downloadUrl}>
@@ -53,20 +53,37 @@ const generateCell = (
           )}
         </Button>
       );
+    case 'error':
+      return (
+        <div class="overflow-y-scroll max-h-52 max-w-64">
+          <span class="">{job.error ?? ''}</span>
+        </div>
+      );
   }
 };
 
 export default function JobEntry(props: { job: Job }) {
-  const downloadUrl = props.job.outputUri
-    ? createAsync(() => getDownloadUrl(props.job.outputUri!))
-    : undefined;
+  const downloadUrl = createAsync<string | null>(
+    async () => {
+      if (!props.job.outputUri) {
+        return null;
+      }
+      const a = await getDownloadUrl(props.job.outputUri!);
+      return a;
+    },
+    {
+      initialValue: null,
+    },
+  );
   return (
     <tr class="border-b border-faint/50 hover:bg-highlight transition-colors">
-      {columns.map((col) => (
-        <td class="px-4 py-3 align-middle">
-          {generateCell(props.job, col.type)}
-        </td>
-      ))}
+      <For each={columns}>
+        {(col) => (
+          <td class="px-4 py-3 align-middle">
+            {generateCell(props.job, col.type, downloadUrl())}
+          </td>
+        )}
+      </For>
     </tr>
   );
 }

@@ -8,6 +8,7 @@ import {
 } from '~/lib/db/operations';
 import { User } from '~/types';
 import { UserDbInsert } from '~/lib/db/dbTypes';
+import { validateInputAsString, validateUsername } from './validators';
 
 type SessionData = {
   userId: number | undefined;
@@ -29,12 +30,8 @@ function processForm(formData: FormData): {
   userName: string;
   password: string;
 } {
-  const userName = String(formData.get('username'));
-  const password = String(formData.get('password'));
-
-  // TODO: Validate inputs
-  // let error = validateUsername(username) || validatePassword(password);
-  // if (error) return new Error(error);
+  const userName = validateUsername(formData.get('username'), 'Username');
+  const password = validateInputAsString(formData.get('password'), 'Password');
 
   return { userName, password };
 }
@@ -42,7 +39,14 @@ function processForm(formData: FormData): {
 export async function login(formData: FormData) {
   const { userName, password } = processForm(formData);
 
-  const user = await getUserByUserName(userName);
+  let user;
+  try {
+    user = await getUserByUserName(userName);
+  } catch (e) {
+    console.log(e);
+    throw new Error("Database Error: couldn't get user");
+  }
+
   if (!user || !(await verify(user.password, password)))
     throw new Error('Invalid login');
 

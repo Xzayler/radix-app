@@ -84,7 +84,7 @@ export default function SystemDetails(props: { system: System }) {
           <Field label="Digit Type">{props.system.digits.type}</Field>
           <Field label="GNS">
             {props.system.isGns === null
-              ? '—'
+              ? '-'
               : props.system.isGns
                 ? 'Yes'
                 : 'No'}
@@ -114,7 +114,7 @@ export default function SystemDetails(props: { system: System }) {
             <div class="mt-3 overflow-x-auto rounded-md border border-dashed  bg-muted/30 p-4">
               {digitsCount === 0 ? (
                 <div class="py-2 text-center text-sm text-muted-foreground">
-                  —
+                  -
                 </div>
               ) : (
                 <div class="flex items-center gap-3 whitespace-nowrap font-mono text-sm text-muted-foreground">
@@ -135,7 +135,7 @@ export default function SystemDetails(props: { system: System }) {
           <div class="mt-3 overflow-x-auto rounded-md border border-dashed bg-muted/30 p-4">
             {!props.system.signature?.length ? (
               <div class="py-2 text-center text-sm text-muted-foreground">
-                —
+                -
               </div>
             ) : (
               <div class="whitespace-nowrap font-mono text-sm text-foreground">
@@ -147,7 +147,7 @@ export default function SystemDetails(props: { system: System }) {
 
         <div class="border-t px-6 py-4">
           <Field label="Last Job">
-            {props.system.lastJob ? props.system.lastJob.toLocaleString() : '—'}
+            {props.system.lastJob ? props.system.lastJob.toLocaleString() : '-'}
           </Field>
         </div>
       </section>

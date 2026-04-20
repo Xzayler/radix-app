@@ -6,6 +6,8 @@ import GnsFilter from './filters/GnsFilter';
 import NameFilter from './filters/NameFilter';
 import DigitTypeFilter from './filters/DigitTypeFilter';
 import { DigitKind } from '~/types';
+import FavouritesToggle from './filters/FavouritesToggle';
+import OwnToggle from './filters/OwnToggle';
 
 export default function SystemsFilters(props: {
   value: SystemsFilter;
@@ -73,6 +75,28 @@ export default function SystemsFilters(props: {
           onChange={(digitType: DigitKind | undefined) => {
             const fs = structuredClone(props.value);
             fs.digitType = digitType;
+            props.setValue(fs);
+          }}
+        />
+      </div>
+
+      <div>
+        <FavouritesToggle
+          value={props.value.filterFavourites ?? false}
+          onChange={(b) => {
+            const fs = structuredClone(props.value);
+            fs.filterFavourites = b;
+            props.setValue(fs);
+          }}
+        />
+      </div>
+
+      <div>
+        <OwnToggle
+          value={props.value.filterOwnedByUser ?? false}
+          onChange={(b) => {
+            const fs = structuredClone(props.value);
+            fs.filterOwnedByUser = b;
             props.setValue(fs);
           }}
         />

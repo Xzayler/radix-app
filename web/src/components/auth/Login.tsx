@@ -33,14 +33,16 @@ export default function Login() {
           name="username"
           type="text"
           placeholder="Username"
-          required
+          // required
+          // minLength={3}
+          // maxLength={32}
         />
         <input
           class="p-3.5 bg-background rounded-b border border-ui text-foreground outline-none"
           name="password"
           type="password"
           placeholder="Password"
-          required
+          // required
         />
         <button
           type="submit"
@@ -55,15 +57,6 @@ export default function Login() {
           Sign up here
         </A>
       </div>
-      <p class="text-foreground">or</p>
-      <form method="post" action={action(guestLogin, 'register')}>
-        <button
-          type="submit"
-          class="mt-2.5 px-2 py-2.5 text-foreground bg-background border-2 border-foreground rounded cursor-pointer"
-        >
-          Log in as a guest
-        </button>
-      </form>
     </div>
   );
 }

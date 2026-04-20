@@ -5,7 +5,6 @@ function validatedEnvVar(envVar: string): string {
   if (!value || value.length == 0) {
     throw new Error(`${envVar} not set`);
   }
-  console.log(`${envVar}: ${value}`);
   return value;
 }
 

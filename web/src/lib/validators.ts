@@ -90,3 +90,18 @@ export function validateFileName(
   }
   return name;
 }
+
+export function validateUsername(
+  input: FormDataEntryValue | null,
+  entityName: string,
+): string {
+  const userName = validateInputAsString(input, entityName);
+  if (userName.length < 3) {
+    throw Error(`${entityName} is too short. Min length is 3.`);
+  }
+  if (userName.length > 32) {
+    throw Error(`${entityName} is too long. Max length is 32.`);
+  }
+
+  return userName;
+}

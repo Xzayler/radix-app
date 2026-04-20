@@ -31,7 +31,7 @@ export default function GenericSystemsTable(props: {
   return (
     <div class="space-y-3">
       <div class="rounded-lg border border-faint bg-card min-h-full">
-        <SystemsFilters value={filters()} setValue={setFilters} />
+        <SystemsFilters value={filters()} setValue={setFilters} />{' '}
         <Suspense fallback={<Loading />}>
           <SystemsTable systems={systems()} />
         </Suspense>

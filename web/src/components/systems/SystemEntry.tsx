@@ -38,7 +38,7 @@ const generateCell = (
       return <span></span>;
     case 'isGns':
       return system.isGns === null ? (
-        <span class="text-foreground text-sm">—</span>
+        <span class="text-foreground text-sm">-</span>
       ) : (
         <span
           class={`text-sm font-medium ${system.isGns ? 'text-green-600' : 'text-red-500'}`}
@@ -48,7 +48,7 @@ const generateCell = (
       );
     case 'signature':
       if (!system.signature) {
-        return <span class="text-foreground text-sm">—</span>;
+        return <span class="text-foreground text-sm">-</span>;
       }
       return (
         <div class="overflow-y-scroll max-h-52">
@@ -59,7 +59,7 @@ const generateCell = (
       );
     case 'lastJob':
       return system.lastJob === null ? (
-        <span class="text-foreground text-sm">—</span>
+        <span class="text-foreground text-sm">-</span>
       ) : (
         <span class="text-sm text-foreground">
           {system.lastJob.toLocaleString()}
@@ -68,10 +68,11 @@ const generateCell = (
     case 'operations':
       return (
         <div
-          class={
-            'h-6 aspect-square cursor-pointer transition-colors hover:text-yellow-500 ' +
-            (isFavourited() ? 'text-yellow-500' : 'text-faint')
-          }
+          classList={{
+            'text-yellow-500': isFavourited(),
+            'text-faint': !isFavourited(),
+          }}
+          class="h-6 aspect-square cursor-pointer transition-colors hover:text-yellow-500"
           onClick={(e) => {
             toggleFavourite();
             e.stopPropagation();
