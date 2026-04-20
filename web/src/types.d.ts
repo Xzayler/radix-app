@@ -64,6 +64,7 @@ export type Digits =
 
 export type System = {
   id: number;
+  name: string;
   dimension: number;
   base: Matrix;
   digits: Digits;

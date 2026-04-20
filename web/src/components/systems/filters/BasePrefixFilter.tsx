@@ -36,10 +36,6 @@ export default function BasePrefixFilter(props: {
     props.onChange(values);
   };
 
-  // createEffect(() => {
-  //   isVectorStringValid(input());
-  // });
-
   return (
     <TextInput
       label={

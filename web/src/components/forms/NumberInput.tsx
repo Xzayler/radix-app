@@ -26,20 +26,15 @@ export default function NaturalNumberInput(props: {
       onChange={(v: string) => {
         props.onChange(parseInput(v));
       }}
-      minValue={0}
+      minValue={1}
     >
       <NumberField.Label>{props.label}</NumberField.Label>
       <NumberField.Input
-        class="flex no-spinner items-center justify-between px-2 border border-ui rounded-md outline-none w-10"
+        class="flex no-spinner items-center justify-between px-2 border-2 border-ui rounded-md w-10"
         type="number"
         name={props.name}
         onInput={filterNumbers}
       />
-      {/* <div class="flex flex-col">
-          <NumberField.IncrementTrigger class="grow w-4 bg-green-500" />
-          <NumberField.DecrementTrigger class="grow w-4 bg-red-500" />
-        </div> */}
-      {/* </div> */}
       <NumberField.ErrorMessage />
     </NumberField>
   );

@@ -8,7 +8,6 @@ import {
   favouritesTable,
 } from './schema';
 import {
-  FavouriteDbEntity,
   FavouriteDbInsert,
   JobDbInsert,
   SystemDbInsert,
@@ -20,9 +19,12 @@ import {
   and,
   arrayContains,
   asc,
+  desc,
   eq,
+  exists,
   getTableColumns,
   inArray,
+  like,
   SQL,
   sql,
 } from 'drizzle-orm';
@@ -32,18 +34,6 @@ import {
   dbInsertFromJob,
   jobFromDbEntity,
 } from './converters';
-
-export type SystemsFilter = {
-  dim?: number;
-  gns?: boolean;
-  basePrefix?: number[];
-  digitType?: DigitKind;
-  digits?: number[][];
-  orderBy?: {
-    field: 'id' | 'lastJob';
-    asc: boolean;
-  };
-};
 
 export async function getSystemById(
   id: number,
@@ -74,11 +64,36 @@ export async function getSystemById(
   return systemFromDbEntity(systems[0]);
 }
 
-function buildSystemFilters(filter: SystemsFilter): SQL[] {
-  const { dim, gns, basePrefix, digitType, digits } = filter;
+export type SystemsFilter = {
+  dim?: number;
+  name?: string;
+  gns?: boolean;
+  basePrefix?: number[];
+  filterFavourites?: boolean;
+  filterOwnedByUser?: boolean;
+  digitType?: DigitKind;
+  digits?: number[][];
+  page: number;
+  pageSize: number;
+};
+
+function buildSystemFilters(filter: SystemsFilter, userId: number): SQL[] {
+  const {
+    dim,
+    name,
+    gns,
+    basePrefix,
+    filterFavourites,
+    filterOwnedByUser,
+    digitType,
+    digits,
+  } = filter;
   const filters: SQL[] = [];
   if (dim) {
     filters.push(eq(systemsTable.dimension, dim));
+  }
+  if (name) {
+    filters.push(like(systemsTable.name, `%${name}%`));
   }
   if (gns != undefined) {
     filters.push(eq(systemsTable.isGNS, gns));
@@ -102,20 +117,35 @@ function buildSystemFilters(filter: SystemsFilter): SQL[] {
       .where(inArray(digitsTable.elements, digits));
     filters.push(arrayContains(systemsTable.digitIds, subquery));
   }
+  if (filterFavourites) {
+    const subquery = db
+      .select({ a: sql`1` })
+      .from(favouritesTable)
+      .where(
+        and(
+          eq(favouritesTable.systemId, systemsTable.id),
+          eq(favouritesTable.userId, userId),
+        ),
+      );
+    filters.push(exists(subquery));
+  }
+  if (filterOwnedByUser) {
+    filters.push(eq(systemsTable.userId, userId));
+  }
   return filters;
 }
 
 export async function getSystems(
   params: SystemsFilter,
   userId: number,
-): Promise<System[]> {
-  const filters = buildSystemFilters(params);
+): Promise<{ systems: System[]; hasNext: boolean }> {
+  const filters = buildSystemFilters(params, userId);
   const systems = await db
     .select({
       ...getTableColumns(systemsTable),
       digits: sql<number[][] | null>`
         (SELECT array_agg(${digitsTable.elements})
-        FROM ${digitsTable} WHERE ${digitsTable}.${digitsTable.id} = ANY(${systemsTable}.${systemsTable.digitIds}))`.as(
+        FROM ${digitsTable} WHERE ${digitsTable.id} = ANY(${systemsTable.digitIds}))`.as(
         'digits',
       ),
       isFavourited: sql<boolean>`
@@ -123,14 +153,25 @@ export async function getSystems(
           SELECT 1
           FROM ${favouritesTable}
           WHERE ${favouritesTable.systemId} = ${systemsTable.id}
-          AND ${favouritesTable.userId} =  ${userId}
+          AND ${favouritesTable.userId} = ${userId}
         )
         `.as('is_favourited'),
     })
     .from(systemsTable)
-    .where(and(...filters));
+    .leftJoin(favouritesTable, eq(systemsTable.id, favouritesTable.systemId))
+    .where(and(...filters))
+    .orderBy(desc(systemsTable.lastJob))
+    .limit(params.pageSize + 1)
+    .offset((params.page - 1) * params.pageSize);
 
-  return systems.map(systemFromDbEntity);
+  const hasNext = systems.length > params.pageSize;
+  if (hasNext) {
+    systems.length = systems.length - 1;
+  }
+  return {
+    systems: systems.map(systemFromDbEntity),
+    hasNext,
+  };
 }
 
 async function insertOrGetVectors(digits: number[][]): Promise<number[]> {
@@ -168,12 +209,13 @@ async function insertOrGetVectors(digits: number[][]): Promise<number[]> {
 
 export async function insertSystem(
   system: Omit<System, 'id'>,
+  userId: number,
 ): Promise<System> {
   let digitIds: number[] | undefined;
   if (system.digits.type == 'Explicit') {
     digitIds = await insertOrGetVectors(system.digits.values);
   }
-  const dbEntity: SystemDbInsert = dbInsertFromSystem(system, digitIds);
+  const dbEntity: SystemDbInsert = dbInsertFromSystem(system, userId, digitIds);
 
   const res = (await db.insert(systemsTable).values(dbEntity).returning())[0];
   if (system.digits.type == 'Explicit') {

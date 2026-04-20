@@ -81,6 +81,7 @@ export function systemFromDbEntity(
   const dim = dbEntity.dimension;
   const system: System = {
     id: dbEntity.id,
+    name: dbEntity.name,
     dimension: dim,
     base: chunkArray(dbEntity.base, dim),
     digits: convertDigits(dbEntity),
@@ -110,9 +111,12 @@ function getDigitParam(digits: Digits): number | null {
 
 export function dbInsertFromSystem(
   system: NewSystem,
+  userId: number,
   digitIds?: number[],
 ): SystemDbInsert {
   const dbEntity: SystemDbInsert = {
+    name: system.name,
+    userId,
     dimension: system.dimension,
     base: system.base.flat(),
     digitType: system.digits.type,

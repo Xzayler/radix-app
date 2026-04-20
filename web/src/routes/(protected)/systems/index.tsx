@@ -1,9 +1,5 @@
-import SystemsTable from '~/components/systems/SystemsTable';
+import GenericSystemsTable from '~/components/systems/GenericSystemsTable';
 
 export default function Systems() {
-  return (
-    <main class="bg-background">
-      <SystemsTable />
-    </main>
-  );
+  return <GenericSystemsTable initialFilters={{ page: 1, pageSize: 25 }} />;
 }

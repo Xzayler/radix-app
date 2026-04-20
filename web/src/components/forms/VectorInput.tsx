@@ -55,15 +55,12 @@ export default function VectorInput(props: {
       validationState={validationState()}
       onInput={validateInput}
     >
-      <TextField.Label>{props.label}</TextField.Label>
+      <TextField.Label class="block">{props.label}</TextField.Label>
       <TextField.Input
         disabled={props.disabled}
         placeholder={props.placeholder}
         class="px-2 border-2 rounded-md border-ui disabled:bg-faint data-invalid:border-red-700 valid:border-ui"
       />
-      <TextField.Description class=" text-xs text-faint ">
-        Input vector values separated by spaces
-      </TextField.Description>
       <TextField.ErrorMessage class="text-xs text-red-700">
         {error()}
       </TextField.ErrorMessage>

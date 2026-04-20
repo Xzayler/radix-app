@@ -1,12 +1,16 @@
 import katex from 'katex';
 
-export default function BaseMatrix(props: { matrix: number[][] }) {
+export default function BaseMatrix(props: {
+  matrix: number[][];
+  toShow?: number;
+}) {
+  const toShow = props.toShow ?? 4;
   let latexString;
-  if (props.matrix.length > 4) {
-    const lastRow = new Array(5).fill('...').join(' & ');
+  if (props.matrix.length > toShow) {
+    const lastRow = new Array(toShow + 1).fill('...').join(' & ');
     latexString = props.matrix
-      .slice(0, 4)
-      .map((row) => row.slice(0, 4).join(' & ') + ' & ...')
+      .slice(0, toShow)
+      .map((row) => row.slice(0, toShow).join(' & ') + ' & ...')
       .concat(lastRow)
       .join(' \\\\ ');
   } else {
@@ -17,6 +21,7 @@ export default function BaseMatrix(props: { matrix: number[][] }) {
     `\\begin{bmatrix} ${latexString} \\end{bmatrix}`,
     {
       throwOnError: false,
+      displayMode: true,
     },
   );
 

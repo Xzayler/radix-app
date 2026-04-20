@@ -35,13 +35,14 @@ export const systemsTable = pgTable(
   'systems',
   {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-    userId: integer('user_id').references(() => usersTable.id),
+    name: text('name').notNull(),
+    userId: integer('user_id').references(() => usersTable.id, {
+      onDelete: 'set null',
+    }),
     dimension: integer('dimension').notNull(),
     base: integer('base').array().notNull(),
     digitType: digitTypeEnum('digit_type').notNull(),
-    // TODO: Separate for each norm?
     isGNS: boolean('is_gns'),
-    // TODO: Also separate for each norm?
     signature: integer('signature').array(),
     lastJob: timestamp('last_job', {
       mode: 'date',

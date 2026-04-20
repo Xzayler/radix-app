@@ -1,4 +1,4 @@
-import { minioClient } from './adapter';
+import minioClient from './client';
 
 async function main() {
   const bucketName = process.env.MINIO_BUCKET;
@@ -18,6 +18,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Bucket creation failed', err);
+  console.error('Bucket creation failed:', err);
   process.exit(1);
 });

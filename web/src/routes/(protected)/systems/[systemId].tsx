@@ -2,24 +2,22 @@ import { createAsync, useParams } from '@solidjs/router';
 import { JSX, Match, Show, Suspense, Switch } from 'solid-js';
 import { getSystemById } from '~/api/server';
 import Loading from '~/components/shared/Loading';
-import { SystemContext } from '~/lib/SystemContext';
+import SystemDetails from '~/components/systems/SystemDetails';
 
 export default function SystemPage(props: { children: JSX.Element }) {
   const params = useParams();
-  const system = createAsync(() => getSystemById(parseInt(params.systemId!)));
+  const systemId = parseInt(params.systemId!);
+  const system = createAsync(() => getSystemById(systemId));
   return (
     <Suspense fallback={<Loading />}>
       <Switch fallback={<Loading />}>
         <Match when={system() == null}>
-          <div>
-            <span>System with id {params.systemId} was not found</span>
+          <div class="flex items-center justify-center w-full h-full">
+            <span>{`System with id [${systemId}] was not found`}</span>
           </div>
         </Match>
         <Match when={system()}>
-          <SystemContext.Provider value={system}>
-            <span>System: {system()?.id}</span>
-            {props.children}
-          </SystemContext.Provider>
+          <SystemDetails system={system()!} />
         </Match>
       </Switch>
     </Suspense>

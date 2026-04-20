@@ -21,9 +21,6 @@
   --app-color-divider: 47 51 54; /* #EFF3F4 */
   --app-color-highlight: 22 24 28; /* #F7F9F9 */
   --app-color-highlightextra: 29 31 35;
-  --app-color-like: 249 32 131;
-  --app-color-repost: 0 186 124;
-  --app-color-comment: 29 155 240;
 
   --font-family: 'Helvetica Neue', Roboto, -apple-system, BlinkMacSystemFont;
 }

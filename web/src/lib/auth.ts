@@ -82,6 +82,14 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
+export async function getLoggedInUser(): Promise<User> {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('No user logged in');
+  }
+  return user;
+}
+
 export const guestLogin = async () => {
   const guestUser: User = { id: 1, userName: 'Guest' };
   setCurrentUser(guestUser);

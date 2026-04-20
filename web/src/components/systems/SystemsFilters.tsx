@@ -3,6 +3,9 @@ import NaturalNumberInput from '../forms/NumberInput';
 import BasePrefixFilter from './filters/BasePrefixFilter';
 import { createEffect } from 'solid-js';
 import GnsFilter from './filters/GnsFilter';
+import NameFilter from './filters/NameFilter';
+import DigitTypeFilter from './filters/DigitTypeFilter';
+import { DigitKind } from '~/types';
 
 export default function SystemsFilters(props: {
   value: SystemsFilter;
@@ -13,7 +16,7 @@ export default function SystemsFilters(props: {
   });
 
   return (
-    <div class="flex flex-wrap items-start gap-3 p-4 border-b border-border">
+    <div class="flex flex-wrap items-start gap-3 p-4 border-b border-faint">
       <div class="flex flex-col gap-1">
         <NaturalNumberInput
           label={
@@ -26,6 +29,17 @@ export default function SystemsFilters(props: {
           onChange={(dim: number | undefined) => {
             const fs = structuredClone(props.value);
             fs.dim = dim;
+            props.setValue(fs);
+          }}
+        />
+      </div>
+
+      <div class="flex flex-col gap-1" onClick={(e) => e.preventDefault()}>
+        <NameFilter
+          value={props.value.name}
+          onChange={(name: string | undefined) => {
+            const fs = structuredClone(props.value);
+            fs.name = name;
             props.setValue(fs);
           }}
         />
@@ -46,9 +60,19 @@ export default function SystemsFilters(props: {
         <BasePrefixFilter
           value={props.value.basePrefix}
           onChange={(prefix: number[] | undefined) => {
-            console.log(`Prefix: ${prefix}`);
             const fs = structuredClone(props.value);
             fs.basePrefix = prefix;
+            props.setValue(fs);
+          }}
+        />
+      </div>
+
+      <div class="w-32">
+        <DigitTypeFilter
+          value={props.value.digitType}
+          onChange={(digitType: DigitKind | undefined) => {
+            const fs = structuredClone(props.value);
+            fs.digitType = digitType;
             props.setValue(fs);
           }}
         />

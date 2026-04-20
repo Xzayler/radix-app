@@ -1,12 +1,9 @@
 import { For } from 'solid-js';
 import JobEntry from './JobEntry';
-import { columns } from './jobTableColumn';
-import { getJobs, getSystems } from '~/api/server';
-import { createAsync } from '@solidjs/router';
+import { columns } from './jobTableColumns';
+import { Job } from '~/types';
 
-export default function JobsTable() {
-  const jobs = createAsync(() => getJobs({}));
-
+export default function JobsTable(props: { jobs: Job[] }) {
   return (
     <div class="rounded-lg border border-faint bg-card">
       <div class="w-full overflow-x-auto">
@@ -21,7 +18,7 @@ export default function JobsTable() {
             </tr>
           </thead>
           <tbody>
-            <For each={jobs()}>{(job) => <JobEntry job={job} />}</For>
+            <For each={props.jobs}>{(job) => <JobEntry job={job} />}</For>
           </tbody>
         </table>
       </div>

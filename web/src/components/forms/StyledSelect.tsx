@@ -5,23 +5,24 @@ export default function StyledSelect<T extends string>(props: {
   label: string | JSX.Element;
   options: T[];
   name: string;
-  value: T;
-  onChange: (v: T | null) => void;
-  defaultValue?: T;
+  value?: T;
+  onChange?: (v: T) => void;
   placeholder?: string;
+  defaultValue?: T;
 }) {
   return (
     <Select
       value={props.value}
       onChange={(v: T | null) => {
-        if (props.onChange) props.onChange(v);
+        if (props.onChange && v) props.onChange(v);
       }}
       options={props.options}
-      defaultValue={props.defaultValue}
       placeholder={props.placeholder}
       name={props.name}
       selectionBehavior="replace"
-      disallowEmptySelection
+      disallowEmptySelection={true}
+      sameWidth={true}
+      defaultValue={props.defaultValue}
       itemComponent={(props) => (
         <Select.Item
           item={props.item}
@@ -33,8 +34,12 @@ export default function StyledSelect<T extends string>(props: {
     >
       <Select.HiddenSelect required />
       <Select.Label>{props.label}</Select.Label>
-      <Select.Trigger class="flex items-center justify-between px-3 border border-ui rounded-md min-w-max field-sizing-content outline-none ">
-        <Select.Value class="text-ellipsis whitespace-nowrap overflow-hidden data-placeholder-shown:text-foreground/50 mr-4">
+      <Select.Trigger
+        class={
+          'flex items-center justify-between px-3 border-2 border-ui rounded-md w-full'
+        }
+      >
+        <Select.Value class="text-ellipsis whitespace-nowrap overflow-hidden data-placeholder-shown:text-foreground/50 mr-2">
           {(state) => <>{state.selectedOption()}</>}
         </Select.Value>
         <Select.Icon>v</Select.Icon>

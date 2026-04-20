@@ -38,10 +38,8 @@ export default function GnsFilter(props: {
       }
       name="gns"
       options={['Yes', 'No', 'Any']}
-      defaultValue="Any"
       value={boolToGnsOption(props.value)}
       onChange={(newVal: GnsOptionsType | null) => {
-        console.log('Updating gns to ', newVal);
         props.onChange(gnsOptionToBool(newVal));
       }}
     />

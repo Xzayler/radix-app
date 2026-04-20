@@ -1,8 +1,10 @@
 import { FileField } from '@kobalte/core/file-field';
+import { JSX } from 'solid-js';
 
 export default function FileInput(props: {
   inputName: string;
   errorMessage?: string;
+  label: JSX.Element;
 }) {
   return (
     <FileField
@@ -13,7 +15,7 @@ export default function FileInput(props: {
       onFileReject={(data) => console.log('rejected: ', data)}
     >
       <FileField.Dropzone class="flex flex-col items-center gap-y-1.5 justify-center rounded-xl border-solid border border-ui w-full py-16">
-        <div>Drop input file</div>
+        <div>{props.label}</div>
         <FileField.Trigger class="bg-accent rounded-md px-4 py-2 ">
           Browse file
         </FileField.Trigger>
