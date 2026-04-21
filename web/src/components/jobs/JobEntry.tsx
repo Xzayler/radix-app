@@ -20,7 +20,11 @@ const generateCell = (
       return <span class="font-mono text-sm text-foreground">{job.norm}</span>;
     case 'status':
       return (
-        <span class="font-mono text-sm text-foreground">{job.status}</span>
+        <div>
+          <span class="flex justify-center items-center font-mono text-sm text-foreground px-3 pt-2 pb-1 rounded-3xl bg-highlightextra">
+            {job.status}
+          </span>
+        </div>
       );
     case 'startedAt':
       return job.startedAt ? (
@@ -76,7 +80,7 @@ export default function JobEntry(props: { job: Job }) {
     },
   );
   return (
-    <tr class="border-b border-faint/50 hover:bg-highlight transition-colors">
+    <tr class="border-t border-faint">
       <For each={columns}>
         {(col) => (
           <td class="px-4 py-3 align-middle">

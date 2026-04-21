@@ -293,7 +293,7 @@ export async function getJobs(params: JobsFilter): Promise<Job[]> {
     .select()
     .from(jobsTable)
     .where(and(...filters))
-    .orderBy(asc(jobsTable.createdAt));
+    .orderBy(desc(jobsTable.createdAt));
 
   return res.map((r) => jobFromDbEntity(r));
 }

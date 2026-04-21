@@ -7,7 +7,7 @@ export default function Systems() {
   return (
     <div class="space-y-3">
       <div class="flex gap-4 items-center">
-        <h2 class="text-lg font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 class="ml-4 text-lg font-semibold uppercase tracking-wider text-muted-foreground">
           Systems
         </h2>
         <Button class="rounded-md bg-accent cursor-pointer px-1 pr-2 hover:scale-105 transition-transform">

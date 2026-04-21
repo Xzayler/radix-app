@@ -10,7 +10,7 @@ export default function StyledCheckbox(props: {
   return (
     <Checkbox checked={props.value} onChange={props.onChange}>
       <Checkbox.Label class="">{props.label}</Checkbox.Label>
-      <Checkbox.Control class="h-5 w-5 aspect-square rounded-md bg-faint m-1 cursor-pointer overflow-hidden">
+      <Checkbox.Control class="h-7 w-7 aspect-square rounded-md bg-highlight border-2 border-ui cursor-pointer overflow-hidden hover:bg-accent">
         <Checkbox.Indicator>
           <div class="h-full w-full bg-accent text-foreground">
             <CheckIcon />

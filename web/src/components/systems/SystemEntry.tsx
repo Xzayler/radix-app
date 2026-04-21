@@ -116,7 +116,7 @@ export default function SystemEntry(props: { system: System }) {
       onClick={(e) => {
         navigate(`/systems/${props.system.id}`);
       }}
-      class="border-b border-faint/50 hover:bg-highlight transition-colors cursor-pointer"
+      class="border-t border-faint/50 hover:bg-highlight transition-colors cursor-pointer"
     >
       <For each={columns}>
         {(col) => (

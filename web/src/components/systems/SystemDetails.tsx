@@ -78,7 +78,7 @@ export default function SystemDetails(props: { system: System }) {
         </Button>
       </div>
 
-      <section class="rounded-lg border  bg-card">
+      <section class="rounded-lg bg-highlight">
         <div class="grid grid-cols-1 gap-x-8 gap-y-6 p-6 md:grid-cols-3">
           <Field label="Dim">{props.system.dimension}</Field>
           <Field label="Digit Type">{props.system.digits.type}</Field>
@@ -91,11 +91,11 @@ export default function SystemDetails(props: { system: System }) {
           </Field>
         </div>
 
-        <div class="border-t  p-6">
-          <span class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <div class="p-6">
+          <span class="text-sm font-semibold uppercase tracking-wider">
             Base
           </span>
-          <div class="mt-3 flex min-h-48 items-center justify-center overflow-x-auto rounded-md border border-dashed  bg-muted/30 p-8 text-center font-mono text-sm text-muted-foreground">
+          <div class="mt-3 flex items-center justify-center overflow-x-auto rounded-md bg-highlightextra p-4 text-center font-mono text-sm text-muted-foreground">
             <Matrix
               matrix={props.system.base}
               toShow={props.system.dimension}
@@ -104,20 +104,18 @@ export default function SystemDetails(props: { system: System }) {
         </div>
 
         <Show when={props.system.digits.type == 'Explicit'}>
-          <div class="border-t  p-6">
+          <div class="p-6">
             <div class="flex items-baseline gap-4">
-              <span class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <span class="text-sm font-semibold uppercase tracking-wider">
                 Digits
               </span>
-              <span class="text-sm text-muted-foreground">{digitsCount}</span>
+              <span class="text-sm">{digitsCount}</span>
             </div>
-            <div class="mt-3 overflow-x-auto rounded-md border border-dashed  bg-muted/30 p-4">
+            <div class="mt-3 overflow-x-auto rounded-md bg-highlightextra p-4">
               {digitsCount === 0 ? (
-                <div class="py-2 text-center text-sm text-muted-foreground">
-                  -
-                </div>
+                <div class="py-2 text-center text-sm">-</div>
               ) : (
-                <div class="flex items-center gap-3 whitespace-nowrap font-mono text-sm text-muted-foreground">
+                <div class="flex items-center gap-3 whitespace-nowrap font-mono text-sm">
                   <VectorSet
                     vectors={(props.system.digits as ExplicitDigits).values}
                     toShow={digitsCount}
@@ -128,11 +126,11 @@ export default function SystemDetails(props: { system: System }) {
           </div>
         </Show>
 
-        <div class="border-t p-6">
+        <div class="p-6">
           <span class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Signature
           </span>
-          <div class="mt-3 overflow-x-auto rounded-md border border-dashed bg-muted/30 p-4">
+          <div class="mt-3 overflow-x-auto rounded-md bg-highlightextra p-4">
             {!props.system.signature?.length ? (
               <div class="py-2 text-center text-sm text-muted-foreground">
                 -
@@ -145,7 +143,7 @@ export default function SystemDetails(props: { system: System }) {
           </div>
         </div>
 
-        <div class="border-t px-6 py-4">
+        <div class="px-6 py-4">
           <Field label="Last Job">
             {props.system.lastJob ? props.system.lastJob.toLocaleString() : '-'}
           </Field>

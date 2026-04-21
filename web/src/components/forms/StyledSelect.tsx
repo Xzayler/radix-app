@@ -36,7 +36,7 @@ export default function StyledSelect<T extends string>(props: {
       <Select.Label>{props.label}</Select.Label>
       <Select.Trigger
         class={
-          'flex items-center justify-between px-3 border-2 border-ui rounded-md w-full'
+          'cursor-pointer flex items-center justify-between px-3 border-2 border-ui rounded-md w-full'
         }
       >
         <Select.Value class="text-ellipsis whitespace-nowrap overflow-hidden data-placeholder-shown:text-foreground/50 mr-2">

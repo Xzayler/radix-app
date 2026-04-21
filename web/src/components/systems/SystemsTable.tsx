@@ -6,11 +6,11 @@ import { System } from '~/types';
 export default function SystemsTable(props: { systems: System[] }) {
   return (
     <div class="w-full overflow-x-auto">
-      <table class="w-full border-collapse">
+      <table class="w-full border-collapse bg-highlight rounded-md p-2 overflow-hidden">
         <thead>
-          <tr class="border-b border-faint">
+          <tr class="">
             {columns.map((col) => (
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-foreground">
+              <th class="px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-foreground">
                 {col.label}
               </th>
             ))}
