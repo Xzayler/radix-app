@@ -1,7 +1,7 @@
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use std::env;
 
-use crate::models::WorkerError;
+use crate::error::WorkerError;
 
 use super::model::{Job, JobId};
 
@@ -30,20 +30,12 @@ pub async fn pick_pending_job(pool: &sqlx::PgPool) -> Result<Option<JobId>, Work
 pub async fn get_job(pool: &sqlx::PgPool, id: i32) -> Result<Job, WorkerError> {
   let job: Job = sqlx::query_as(
     format!("SELECT
-    jobs.id,
-    status,
     job_type,
     norm,
-    output_uri,
-    started_at,
-    finished_at,
     systems.id as system_id,
     systems.dimension,
     systems.base,
     systems.digit_type,
-    systems.is_gns,
-    systems.signature,
-    systems.last_job,
     systems.digit_param,
     (
       SELECT array_agg(v.elements)

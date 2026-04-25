@@ -1,4 +1,4 @@
-use crate::{db::db};
+use crate::db::db::{self, update_db_with_job_error};
 use std::{env, error::Error, fmt};
 
 pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
@@ -51,8 +51,9 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
         if !status.success() {
           let code = status.code().unwrap_or(255);
           println!("\nJob processing failed with code {}!", code);
-          return Err(SupervisorError::ChildCrashed(code));
-          // TODO: Update job as FAILED
+          if let Err(err) = update_db_with_job_error(&pool, id, "Unhandled error. The server might not have enough resources to process the job or infrastructure might be unreachable.".to_string()).await {
+            return Err(SupervisorError::Database(format!("Couldn't update job {id} with error {err}")))
+          }
         } else {
           println!("\nWorker exited successfully");
         }
@@ -69,7 +70,6 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
 #[derive(Debug)]
 pub enum SupervisorError {
   ChildError(String),
-  ChildCrashed(i32),
   Database(String)
 }
 
@@ -77,7 +77,6 @@ impl fmt::Display for SupervisorError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       Self::ChildError(msg) => write!(f, "Error spawning worker: {}", msg),
-      Self::ChildCrashed(code) => write!(f, "Child crashed with code {}", code),
       Self::Database(msg) => write!(f, "There was an error communicating with the database: {}", msg)
     }
   }

@@ -2,7 +2,7 @@ mod executor;
 mod supervisor;
 mod db;
 mod minio;
-mod models;
+mod error;
 use std::{error::Error, process};
 
 #[tokio::main]
@@ -27,12 +27,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
           process::exit(1);
         }
       };
-      // TODO: Handle errors
-      if let Err(err) = executor::run(id).await {
-        println!("Executor failed with error {err}");
-        process::exit(2);
-      }
-      
+      executor::run(id).await;
+    
       process::exit(0);
     }
     _ => {

@@ -7,7 +7,7 @@ use nalgebra::DVector;
 use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 
-use crate::models::WorkerError;
+use crate::error::WorkerError;
 
 pub async fn create_client() -> Result<Client,WorkerError> {
   let minio_endpoint = env::var("MINIO_ENDPOINT").map_err(|err| WorkerError::Environment("MINIO_ENDPOINT must be set: ".to_string() + err.to_string().as_str()))?;

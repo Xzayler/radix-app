@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio", "runtime-tokio-rustls", "chrono"] }
+sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio-rustls"] }
 algebraeon = "0.0.16"
 nalgebra = "0.34.1"
 rayon = "1.11"

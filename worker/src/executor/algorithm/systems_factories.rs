@@ -1,6 +1,6 @@
 use nalgebra::DMatrix;
 
-use crate::{executor::algorithm::{digits::SystemDigitsEnum, systems::{GenericSystem, SystemEnum}}, models::{Norms, WorkerError}};
+use crate::{executor::algorithm::{digits::SystemDigitsEnum, norms::NormEnum, systems::{GenericSystem, SystemEnum}}, error::WorkerError};
 
 pub struct MatcherContext<'a> {
   pub base: &'a DMatrix<f64>
@@ -9,7 +9,7 @@ pub struct MatcherContext<'a> {
 pub struct BuilderContext {
   pub base: DMatrix<f64>,
   pub digits: SystemDigitsEnum,
-  pub norm: Norms
+  pub norm: NormEnum
 }
 
 pub trait SystemFactory {

@@ -1,5 +1,6 @@
+use core::panic;
 use std::option::Option;
-use sqlx::{FromRow, Row, postgres::PgRow, types::chrono::{DateTime, Utc}};
+use sqlx::{FromRow, Row, postgres::PgRow};
 
 #[derive(Debug, sqlx::Type)]
 #[sqlx(type_name = "digit_type", rename_all = "PascalCase")]
@@ -7,7 +8,6 @@ pub enum DigitType {
   Explicit,
   Canonical,
   JCanonical,
-  Dense,
   Adjoined,
   Symmetric,
   JSymmetric,
@@ -20,21 +20,9 @@ pub struct DbSystem {
   pub dimension: i32,
   pub base: Vec<i32>,
   pub digit_type: DigitType,
-  pub is_gns: Option<bool>,
-  pub signature: Option<Vec<i32>>,
-  pub last_job: Option<DateTime<Utc>>,
   // digit fields
   pub digit_param: Option<i32>,
   pub digits: Option<Vec<Vec<i32>>>
-}
-
-#[derive(Debug, sqlx::Type)]
-#[sqlx(type_name = "status")]
-pub enum JobStatus {
-  Pending,
-  Running,
-  Succeeded,
-  Failed
 }
 
 #[derive(Debug, sqlx::Type)]
@@ -55,14 +43,9 @@ pub enum NormType {
 
 #[derive(Debug)]
 pub struct Job {
-  pub id: i32,
   pub system: DbSystem,
-  pub status: JobStatus,
   pub norm: NormType,
-  pub job_type: JobType,
-  pub output_uri: Option<String>,
-  pub started_at: Option<DateTime<Utc>>,
-  pub finished_at: Option<DateTime<Utc>>,
+  pub job_type: JobType
 }
 
 impl FromRow<'_, PgRow> for Job {
@@ -80,32 +63,21 @@ impl FromRow<'_, PgRow> for Job {
       dimension: row.get("dimension"),
       base: row.get("base"),
       digit_type: row.get("digit_type"),
-      is_gns: row.get("is_gns"),
-      signature: row.get("signature"),
-      last_job: row.get("last_job"),
       // digit fields
       digit_param: row.get("digit_param"),
       digits: digits
     };
     Ok(Self {
-      id: row.get("id"),
       system: system,
-      status: row.get("status"),
       job_type: row.get("job_type"),
-      norm: row.get("norm"),
-      output_uri: row.get("output_uri"),
-      started_at: row.get("started_at"),
-      finished_at: row.get("finished_at"),
+      norm: row.get("norm")
     })
   }
 }
 
 
 pub fn parse_vector_of_vectors(s: &str) -> Vec<Vec<i32>> {
-  // if !s.starts_with("{{") || !s.ends_with("}}") {
-  //     return Err("Invalid format: string must start with {{ and end with }}".into());
-  // }
-  let inner = &s[1..s.len() - 1]; // remove outer {}
+  let inner = &s[1..s.len() - 1];
   let parts: Vec<&str> = inner.split("},{").collect();
   let mut result = Vec::new();
   for part in parts {
@@ -114,7 +86,7 @@ pub fn parse_vector_of_vectors(s: &str) -> Vec<Vec<i32>> {
       .map(|n| {
           match n.trim().parse::<i32>() {
             Ok(res)=> res,
-            Err(_) => 99
+            Err(err) => panic!("Could not parse digits from database! {err}")
           }
         }
       )

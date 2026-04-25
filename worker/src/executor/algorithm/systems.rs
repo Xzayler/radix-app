@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use nalgebra::{DMatrix, DVector};
 
-use crate::{executor::algorithm::{digits::{SystemDigits, SystemDigitsEnum}, lib::{build_h_i, find_c_gamma, get_smith_data, hash_point}}, models::{Norms, WorkerError}};
+use crate::{executor::algorithm::{digits::{SystemDigits, SystemDigitsEnum}, lib::{build_h_i, find_c_gamma, get_smith_data, hash_point}, norms::NormEnum}, error::WorkerError};
 
 pub trait System {
   fn get_base(&self) -> &DMatrix<f64>;
@@ -46,7 +46,7 @@ pub struct GenericSystem {
   base: DMatrix<f64>,
   digits: SystemDigitsEnum,
   m_inv: DMatrix<f64>,
-  norm: Norms,
+  norm: NormEnum,
   h_map: HashMap<i64, DVector<f64>>,
   u: DMatrix<f64>,
   g_vec: Vec<i64>,
@@ -55,7 +55,7 @@ pub struct GenericSystem {
 }
 
 impl GenericSystem {
-  pub fn new(base: DMatrix<f64>, digits: SystemDigitsEnum, norm: Norms) -> Result<Self, WorkerError> {
+  pub fn new(base: DMatrix<f64>, digits: SystemDigitsEnum, norm: NormEnum) -> Result<Self, WorkerError> {
     let dim = base.ncols();
 
     let m_inv = match base.clone().try_inverse() {
@@ -163,8 +163,9 @@ impl System for GenericSystem {
 }
 
 mod tests {
-  use super::*;
   use crate::executor::algorithm::digits::get_explicit;
+
+use super::*;
 
   #[test]
   fn generic_system_phi_test() -> Result<(), WorkerError> {
@@ -187,7 +188,7 @@ mod tests {
       DVector::from_row_slice(&[-2.0, 2.0]),
     ];
     let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect(""));
-    let system = SystemEnum::Generic(GenericSystem::new(base, digits, Norms::Infinite)?);
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
 
     for i in 0..3 {
       let res = system.phi(&starts[i])?;
@@ -209,7 +210,7 @@ mod tests {
       DVector::from_row_slice(&[-6.0, 5.0]),
     ];
     let digits_enum = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect(""));
-    let system = SystemEnum::Generic(GenericSystem::new(base, digits_enum, Norms::Infinite)?);
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits_enum, NormEnum::Infinite)?);
     let expected_box: (Vec<i32>, Vec<i32>) = (vec![-2, -6], vec![2, 1]);
     let cover_box = system.get_cover_box()?;
     println!("Box: {:?}", cover_box);

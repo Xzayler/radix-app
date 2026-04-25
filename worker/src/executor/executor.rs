@@ -1,7 +1,7 @@
 use nalgebra::{DMatrix, DVector};
 
-use crate::{db::{db::{self, update_db_with_job_error}, model::{DbSystem, DigitType, Job, JobType, NormType}}, executor::algorithm::lib::get_matrix_norm, minio::minio::create_client, models::{Norms, WorkerError}};
-use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_dense, get_explicit, get_j_canonical, get_j_symmetric, get_shifted_canonical, get_symmetric}, operations::{classification, decision}, systems::SystemEnum, systems_factories::{BuilderContext, MatcherContext, SystemFactory, system_factories}};
+use crate::{db::{db::{self, update_db_with_job_error}, model::{DbSystem, DigitType, Job, JobType, NormType}}, executor::algorithm::norms::{Norm, NormEnum}, error::WorkerError};
+use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_explicit, get_j_canonical, get_j_symmetric, get_shifted_canonical, get_symmetric}, operations::{classification, decision}, systems::SystemEnum, systems_factories::{BuilderContext, MatcherContext, SystemFactory, system_factories}};
 use crate::minio::minio::upload_job_results;
 
 #[derive(Debug)]
@@ -11,29 +11,29 @@ struct JobOutput {
   all_loops: Option<Vec<Vec<DVector<f64>>>>
 }
 
-pub async fn run(job_id: i32) -> Result<(), WorkerError> {
+pub async fn run(job_id: i32) -> () {
   let pool = match db::connect().await {
     Ok(pool) => pool,
     Err(err) => {
-      return Err(WorkerError::Database(err.to_string()));
+      panic!("Can't connect to database. {err}");
     }
   };
   let job = match db::get_job(&pool, job_id).await {
     Ok(job) => job,
     Err(err) => {
-      return Err(WorkerError::Database(err.to_string()));
+      panic!("Can't get job. {err}")
     }
   };
 
   let norm = to_my_norm(&job.norm);
-  let system = match build_system(&job.system, &norm) {
+  let system = match build_system(&job.system, norm) {
     Ok(system) => system,
     Err(err) => {
       let res = update_db_with_job_error(&pool, job_id, err.to_string()).await;
       if let Err(err) = res {
-        println!("Couldn't update job {job_id} with error {err}");
+        panic!("Couldn't update job {job_id} with error {err}")
       }
-      return Err(err);
+      return ();
     }
   };
   let output = match build_job_output(&job, &system) {
@@ -41,28 +41,34 @@ pub async fn run(job_id: i32) -> Result<(), WorkerError> {
     Err(err) => {
       let res = update_db_with_job_error(&pool, job_id, err.to_string()).await;
       if let Err(err) = res {
-        println!("Couldn't update job {job_id} with error {err}");
+        panic!("Couldn't update job {job_id} with error {err}")
       }
-      return Err(err);
+      return ();
     }
   };
   
   let mut output_uri = None;
   if let Some(loops) = output.all_loops {
     println!("Uploading to minio.");
-    output_uri = Some(upload_job_results(job_id, &loops).await?)
+    output_uri = match upload_job_results(job_id, &loops).await {
+      Ok(uri) => Some(uri),
+      Err(err) => {
+        panic!("Couldn't upload file. {err}")
+      }
+    }
   }
 
-  println!("Updating db");
   match db::update_db_with_results(&pool, job_id, job.system.id, output.is_gns, output.signature, output_uri).await {
-    Ok(_) => Ok(()), 
-    Err(err) => Err(WorkerError::Database(err.to_string()))
+    Ok(_) => (), 
+    Err(err) => {
+      panic!("Can't update db with results. {err}");
+    }
   }
 }
 
 fn build_system(
   db_system: &DbSystem,
-  norm: &Norms
+  norm: NormEnum
 ) -> Result<SystemEnum, WorkerError> {
   if db_system.dimension <= 0 {
     return Err(WorkerError::InvalidInput("Dimension must be positive".to_string()));
@@ -71,9 +77,9 @@ fn build_system(
   let float_base_values: Vec<f64> = db_system.base.iter().map(|el| *el as f64).collect();
   let base = DMatrix::from_row_slice(dim, dim, &float_base_values[..]);
 
-  let base_norm = get_matrix_norm(&base, norm);
+  let base_norm = norm.get_matrix_norm(&base);
   if base_norm <= 1.0 {
-    return Err(WorkerError::InvalidNorm {norm: norm.clone(), message: "Base is not expansive".to_string()});
+    return Err(WorkerError::InvalidNorm {norm: norm.to_string(), message: "Base is not expansive".to_string()});
   }
 
   let digits: SystemDigitsEnum = match db_system.digit_type {
@@ -155,12 +161,6 @@ fn build_system(
       Err(err) => {
         return Err(WorkerError::InvalidInput(err.to_string()));
       }
-    },
-    DigitType::Dense => match get_dense(&base, norm) {
-      Ok(digits) => SystemDigitsEnum::Dense(digits),
-      Err(err) => {
-        return Err(WorkerError::InvalidInput(err.to_string()));
-      }
     }
   };
 
@@ -172,7 +172,7 @@ fn build_system(
   let builder_ctx = BuilderContext {
     base: base,
     digits,
-    norm: norm.clone()
+    norm: norm
   };
   let system = systems_factory.create(builder_ctx)?;
 
@@ -194,11 +194,11 @@ fn build_na_vector(vec: &Vec<i32>) -> DVector<f64> {
   DVector::from_vec(v)
 }
 
-fn to_my_norm(db_norm: &NormType) -> Norms {
+fn to_my_norm(db_norm: &NormType) -> NormEnum {
   match db_norm {
-    NormType::Infinite => Norms::Infinite,
-    NormType::L1 => Norms::L1,
-    NormType::L2 => Norms::L2,
+    NormType::Infinite => NormEnum::Infinite,
+    NormType::L1 => NormEnum::L1,
+    NormType::L2 => NormEnum::L2,
   }
 }
 

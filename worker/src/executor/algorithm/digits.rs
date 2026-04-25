@@ -1,7 +1,7 @@
 use nalgebra::{DMatrix, DVector};
 use std::{error::Error, fmt};
 
-use crate::{executor::algorithm::lib::{get_smith_data, get_vector_norm}, models::Norms};
+use crate::executor::algorithm::lib::get_smith_data;
 
 const BASE_NAME: &str = "base";
 const U_NAME: &str = "base's smith component";
@@ -39,8 +39,7 @@ pub enum SystemDigitsEnum {
   Canonical(CanonicalDigits),
   Symmetric(SymmetricDigits),
   Shifted(ShiftedCanonicalDigits),
-  Adjoint(AdjointDigits),
-  Dense(DenseDigits),
+  Adjoint(AdjointDigits)
 }
 
 impl SystemDigits for SystemDigitsEnum {
@@ -50,8 +49,7 @@ impl SystemDigits for SystemDigitsEnum {
       SystemDigitsEnum::Canonical(d) => d.get_digits_vec(),
       SystemDigitsEnum::Symmetric(d) => d.get_digits_vec(),
       SystemDigitsEnum::Shifted(d) => d.get_digits_vec(),
-      SystemDigitsEnum::Adjoint(d) => d.get_digits_vec(),
-      SystemDigitsEnum::Dense(d) => d.get_digits_vec(),
+      SystemDigitsEnum::Adjoint(d) => d.get_digits_vec()
     }
   }
 
@@ -61,8 +59,7 @@ impl SystemDigits for SystemDigitsEnum {
       SystemDigitsEnum::Canonical(d) => d.get_digits_iter(),
       SystemDigitsEnum::Symmetric(d) => d.get_digits_iter(),
       SystemDigitsEnum::Shifted(d) => d.get_digits_iter(),
-      SystemDigitsEnum::Adjoint(d) => d.get_digits_iter(),
-      SystemDigitsEnum::Dense(d) => d.get_digits_iter(),
+      SystemDigitsEnum::Adjoint(d) => d.get_digits_iter()
     }
   }
 }
@@ -241,85 +238,6 @@ pub fn get_adjoint(base: &DMatrix<f64>) -> Result<AdjointDigits, DigitsError> {
   Ok(AdjointDigits { dim: base.ncols(), det, abs_det: det.unsigned_abs(), base: base.clone(), base_inv, u_inv, g_vec })
 }
 
-pub struct DenseDigits {
-  dim: usize,
-  g_vec: Vec<i64>,
-  det: i64,
-  abs_det: u64,
-  base: DMatrix<f64>,
-  base_inv: DMatrix<f64>,
-  u_inv: DMatrix<f64>,
-  norm: Norms,
-}
-
-impl SystemDigits for DenseDigits {
-  fn get_digits_vec(&self) -> Vec<DVector<f64>> {
-    let mut digits = AdjointDigits { dim: self.dim, det: self.det, abs_det: self.abs_det, base: self.base.clone(), base_inv: self.base_inv.clone(), u_inv: self.u_inv.clone(), g_vec: self.g_vec.clone() }.get_digits_vec();
-    let step = self.abs_det as f64;
-
-    loop {
-      let previous = digits.clone();
-      let mut updated = Vec::with_capacity(previous.len());
-
-      for digit in previous.iter() {
-        let mut current = digit.clone();
-        let mut best_norm = get_vector_norm(&(self.base.clone() * &current), &self.norm);
-
-        for axis in 0..self.dim {
-          current[axis] += step;
-          let mut shifted = false;
-
-          while get_vector_norm(&(self.base.clone() * &current), &self.norm) < best_norm {
-            current[axis] += step;
-            best_norm = get_vector_norm(&(self.base.clone() * &current), &self.norm);
-            shifted = true;
-          }
-
-          if shifted {
-            current[axis] -= step;
-          } else {
-            current[axis] -= 2.0 * step;
-            while get_vector_norm(&(self.base.clone() * &current), &self.norm) < best_norm {
-              current[axis] -= step;
-              best_norm = get_vector_norm(&(self.base.clone() * &current), &self.norm);
-            }
-            current[axis] += step;
-          }
-        }
-
-        updated.push(current);
-      }
-
-      if updated == digits {
-        return updated;
-      }
-
-      digits = updated;
-    }
-  } 
-
-  fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
-    let digits = self.get_digits_vec();
-    Box::new(digits.into_iter())
-  }
-}
-
-pub fn get_dense(base: &DMatrix<f64>, norm: &Norms) -> Result<DenseDigits, DigitsError> {
-  let dim = base.ncols();
-  let base_inv = match base.clone().try_inverse() {
-    Some(inv) => inv,
-    None => return Err(DigitsError::NonInvertible(BASE_NAME.to_string()))
-  };
-
-  let (u, g_vec) = get_smith_data(&base);
-  let u_inv = match u.clone().try_inverse() {
-    Some(inv) => inv,
-    None => return Err(DigitsError::NonInvertible(U_NAME.to_string()))
-  };
-  let det = base.determinant() as i64;
-  Ok(DenseDigits { dim, det, abs_det: det.unsigned_abs(), base: base.clone(), base_inv, u_inv, g_vec, norm: norm.clone() })
-}
-
 fn axis_digits(
   dim: usize,
   abs_determinant: u64,
@@ -345,7 +263,7 @@ fn validate_axis(dim: usize, axis: usize) -> Result<(), DigitsError> {
 }
 
 fn validate_shift(abs_determinant: u64, shift: u32) -> Result<(), DigitsError> {
-  if shift > (abs_determinant - 1) as u32 {
+  if shift as u64 > (abs_determinant - 1) {
     Err(DigitsError::InvalidShift {
       shift,
       abs_det: abs_determinant as i64,
@@ -482,32 +400,4 @@ mod tests {
     assert_eq!(digits.len(), expected.len());
     assert!(expected.iter().all(|expected_digit| digits.contains(expected_digit)));
   }
-
-//  #[test]
-//   fn dense_digits_test() {
-//     let base = DMatrix::from_row_slice(4, 4, &[
-//       1.0, -1.0, 0.0, 0.0,
-//       1.0, 1.0, 0.0, 0.0,
-//       0.0, 0.0, 2.0, -1.0,
-//       0.0, 0.0, 1.0, 2.0
-//       ]);
-//     let dim = base.ncols();
-//     let expected = vec![
-//       DVector::from_row_slice(&[0.0, 0.0, 0.0, 0.0]),
-//       DVector::from_row_slice(&[1.0, 0.0, 1.0, 0.0]),
-//       DVector::from_row_slice(&[0.0, 1.0, 0.0, 1.0]),
-//       DVector::from_row_slice(&[1.0, 1.0, 1.0, 1.0]),
-//       DVector::from_row_slice(&[-1.0, 0.0, -1.0, 0.0]),
-//       DVector::from_row_slice(&[0.0, -1.0, 0.0, -1.0]),
-//       DVector::from_row_slice(&[-1.0, -1.0, -1.0, -1.0]),
-//       DVector::from_row_slice(&[-1.0, 1.0, -1.0, 1.0]),
-//       DVector::from_row_slice(&[1.0, -1.0, 1.0, -1.0]),
-//       DVector::from_row_slice(&[-1.0, 2.0, -1.0, 2.0])
-//     ];
-//     let digits = dense_digits_vec(dim, base.determinant() as i64, &base, &Norms::Infinite).expect("generated digist");
-//     println!("{:?}", digits);
-//     assert_eq!(digits.len(), expected.len());
-//     assert!(expected.iter().all(|expected_digit| digits.contains(expected_digit)));
-//   }
-
 }

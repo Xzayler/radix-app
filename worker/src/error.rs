@@ -1,29 +1,12 @@
-use std::{error::Error, fmt::{self, Formatter}};
+use std::{error::Error, fmt};
 
 use nalgebra::DVector;
-
-#[derive(Debug, Clone)]
-pub enum Norms {
-  Infinite,
-  L2,
-  L1,
-}
-
-impl fmt::Display for Norms {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    match self {
-      Self::Infinite => write!(f, "Infinite"),
-      Self::L1 => write!(f, "L1"),
-      Self::L2 => write!(f, "L2")
-    }
-  }
-}
 
 #[derive(Debug)]
 pub enum WorkerError {
   // User/input errors
   NonInvertibleBase,
-  InvalidNorm {norm: Norms, message: String},
+  InvalidNorm {norm: String, message: String},
   InvalidInput(String),
   
   // Infra errors

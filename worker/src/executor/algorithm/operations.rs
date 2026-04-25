@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use nalgebra::DVector;
 use std::time::SystemTime;
 
-use crate::{executor::algorithm::{lib::satisfies_unit_condition, systems::{System, SystemEnum}}, models::WorkerError};
+use crate::{executor::algorithm::{lib::satisfies_unit_condition, systems::{System, SystemEnum}}, error::WorkerError};
 
 use rayon::prelude::*;
 
@@ -124,7 +124,6 @@ fn has_any_loop<'a>(
     }
 
     let grid_point = DVector::from_column_slice(&point);
-    // TODO: Handle errors
     let loop_set = get_loop_floyd(system, &grid_point);
     let zero_point: DVector<f64> = DVector::from_element(dims, 0.0);
     match loop_set {
@@ -208,7 +207,7 @@ pub fn get_loop_floyd<'a>(
 
 #[cfg(test)]
 mod tests {
-  use crate::{executor::algorithm::{digits::{SystemDigitsEnum, get_explicit}, systems::GenericSystem, systems_factories::{BuilderContext, GenericFactory, SystemFactory}}, models::Norms};
+  use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_explicit}, norms::NormEnum, systems::GenericSystem, systems_factories::{BuilderContext, GenericFactory, SystemFactory}};
 
 use super::*;
   use nalgebra::DMatrix;
@@ -224,7 +223,7 @@ use super::*;
       DVector::from_row_slice(&[-6.0, 5.0]),
     ];
     let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
-    let system = SystemEnum::Generic(GenericSystem::new(base, digits, Norms::Infinite)?);
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
 
     let start: DVector<f64> = DVector::from_column_slice(&[-6.0, 3.0]);
     let expected = vec![
@@ -264,7 +263,7 @@ use super::*;
     let builder_ctx = BuilderContext {
       base: base,
       digits,
-      norm: Norms::Infinite
+      norm: NormEnum::Infinite
     };
     let system = GenericFactory.create(builder_ctx)?;
     let res = match decision(&system) {

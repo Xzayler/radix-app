@@ -1,4 +1,4 @@
-use crate::{executor::algorithm::digits::{SystemDigits, SystemDigitsEnum}, models::{Norms, WorkerError}};
+use crate::{executor::algorithm::{digits::{SystemDigits, SystemDigitsEnum}, norms::{Norm, NormEnum}}, error::WorkerError};
 use rayon::prelude::*;
 use std::collections::HashMap;
 
@@ -6,11 +6,8 @@ extern crate nalgebra as na;
 use algebraeon::nzq::Integer;
 use algebraeon::rings::matrix::Matrix as Alg_Matrix;
 use na::{DMatrix, DVector};
-use nalgebra::{EuclideanNorm, LpNorm, Norm, UniformNorm};
 
-// TODO: Big work: Generally use i64 instead of floats
 fn get_smith_values(m: &DMatrix<f64>) -> (DMatrix<f64>, DMatrix<f64>) {
-  // Assuming m is a square matrix
   let dim = m.ncols();
   let cols: Vec<Vec<Integer>> = m
     .column_iter()
@@ -80,73 +77,38 @@ pub fn build_h_i<'a>(
     .collect()
 }
 
-pub fn get_vector_norm(v: &DVector<f64>, norm: &Norms) -> f64 {
-  match norm {
-    Norms::Infinite => v.apply_norm(&UniformNorm),
-    Norms::L1 => v.apply_norm(&LpNorm(1)),
-    Norms::L2 => v.apply_norm(&EuclideanNorm)
-  }
-}
+// pub fn get_vector_norm(v: &DVector<f64>, norm: &Norms) -> f64 {
+//   match norm {
+//     Norms::Infinite => v.apply_norm(&UniformNorm),
+//     Norms::L1 => v.apply_norm(&LpNorm(1)),
+//     Norms::L2 => v.apply_norm(&EuclideanNorm)
+//   }
+// }
 
-fn spectral_norm(m: &DMatrix<f64>) -> f64 {
+pub fn spectral_norm(m: &DMatrix<f64>) -> f64 {
   let prod = m.transpose() * m;
   let svd = prod.svd(false, false);
   svd.singular_values[0].sqrt()
 }
 
-pub fn get_matrix_norm(m: &DMatrix<f64>, norm: &Norms) -> f64 {
-  match norm {
-    Norms::Infinite => m.apply_norm(&UniformNorm),
-    Norms::L1 => m.apply_norm(&LpNorm(1)),
-    Norms::L2 => spectral_norm(m)
-  }
-}
-
-fn find_c_gamma_spectral(m_inv: &DMatrix<f64>) -> Result<(usize, f64), WorkerError> {
+pub fn find_c_gamma(m_inv: &DMatrix<f64>, norm: &NormEnum) -> Result<(usize, f64), WorkerError> {
   let norm_threshold: f64 = 0.01;
   let mut c: usize = 1;
-  let inv_norm = spectral_norm(&m_inv);
+  let inv_norm = norm.get_matrix_norm(&m_inv);
   if inv_norm >= 1.0 {
-    return Err(WorkerError::InvalidNorm {norm: Norms::L2, message: "Base inverse not contractive".to_string()});
+    return Err(WorkerError::InvalidNorm {norm: norm.to_string(), message: "Base inverse not contractive".to_string()});
   }
 
   let mut m_pow = m_inv.clone();
 
-  while spectral_norm(&m_pow) >= norm_threshold {
+  while norm.get_matrix_norm(&m_pow) >= norm_threshold {
     c += 1;
     m_pow = &m_pow * m_inv;
   }
 
-  let gamma = 1.0 / (1.0 - spectral_norm(&m_pow));
+  let gamma = 1.0 / (1.0 - norm.get_matrix_norm(&m_pow));
 
   Ok((c, gamma))
-}
-
-fn find_c_gamma_norm(m_inv: &DMatrix<f64>, norm: &impl Norm<f64>, norm_type: &Norms) -> Result<(usize, f64), WorkerError> {
-  let norm_threshold: f64 = 0.01;
-  let mut c: usize = 1;
-  let inv_norm = m_inv.apply_norm(norm);
-  if inv_norm >= 1.0 {
-    return Err(WorkerError::InvalidNorm {norm: norm_type.clone(), message: "Base inverse not contractive".to_string()});
-  }
-
-  let mut m_pow = m_inv.clone();
-  while m_pow.apply_norm(norm) >= norm_threshold {
-    c += 1;
-    m_pow = &m_pow * m_inv;
-  }
-
-  let gamma = 1.0 / (1.0 - m_pow.apply_norm(norm));
-
-  Ok((c, gamma))
-}
-
-pub fn find_c_gamma(m_inv: &DMatrix<f64>, norm: &Norms) -> Result<(usize, f64), WorkerError> {
-  match norm {
-    Norms::L2 => find_c_gamma_spectral(m_inv),
-    Norms::Infinite => find_c_gamma_norm(m_inv, &UniformNorm, &Norms::Infinite),
-    Norms::L1 => find_c_gamma_norm(m_inv, &LpNorm(1), &Norms::L1),
-  }
 }
 
 pub fn satisfies_unit_condition(base: &DMatrix<f64>) -> bool {
