@@ -23,15 +23,18 @@ export default function SystemJobsTable(props: {
   return (
     <div class="space-y-3">
       <div class="flex justify-between items-center">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 class="text-lg font-semibold uppercase tracking-wider text-muted-foreground">
           Jobs
         </h2>
         <Button
           onClick={toggleOpenState}
-          class="rounded-md bg-accent cursor-pointer hover:scale-105 transition-transform"
+          class="rounded-md bg-accent cursor-pointer px-1 pr-2 hover:scale-105 transition-transform"
         >
-          <div class="h-7 aspect-square">
-            <AddIcon />
+          <div class="flex">
+            <div class="h-5 aspect-square">
+              <AddIcon />
+            </div>
+            <span>New Analysis</span>
           </div>
         </Button>
       </div>

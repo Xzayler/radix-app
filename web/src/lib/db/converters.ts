@@ -1,7 +1,6 @@
 import {
   AdjoinedDigits,
   CanonicalDigits,
-  DenseDigits,
   Digits,
   ExplicitDigits,
   JCanonicalDigits,
@@ -44,13 +43,6 @@ function convertDigits(system: SystemDbEntityWithDetails): Digits {
         type: 'Adjoined',
       };
       return a;
-    case 'Dense':
-      const p = system.digitParam;
-      const d: DenseDigits = {
-        type: 'Dense',
-        normType: p == 1 ? 'L1' : p == 2 ? 'L2' : 'Infinite',
-      };
-      return d;
     case 'Shifted':
       const sh: ShiftedDigits = {
         type: 'Shifted',
@@ -102,7 +94,6 @@ function getDigitParam(digits: Digits): number | null {
       return digits.shift;
     case 'Explicit':
     case 'Canonical':
-    case 'Dense':
     case 'Adjoined':
     case 'Symmetric':
       return null;

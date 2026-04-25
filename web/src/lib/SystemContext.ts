@@ -1,4 +1,4 @@
-import type { System, User } from '~/types';
+import type { System } from '~/types';
 import { createContext, useContext } from 'solid-js';
 import { AccessorWithLatest } from '@solidjs/router';
 
@@ -9,7 +9,7 @@ export function useSystemContext() {
   const value = useContext(SystemContext);
 
   if (!value) {
-    throw new Error('Missing System context Provider');
+    throw new Error('Missing context Provider');
   }
 
   return value;

@@ -1,3 +1,4 @@
+'use server';
 import { Client } from 'minio';
 
 function validatedEnvVar(envVar: string): string {
@@ -13,8 +14,8 @@ function setupClient() {
     endPoint: validatedEnvVar('MINIO_ENDPOINT'),
     port: parseInt(validatedEnvVar('MINIO_PORT')),
     useSSL: false,
-    accessKey: validatedEnvVar('MINIO_ROOT_USER'),
-    secretKey: validatedEnvVar('MINIO_ROOT_PASSWORD'),
+    accessKey: validatedEnvVar('MINIO_USER'),
+    secretKey: validatedEnvVar('MINIO_PASSWORD'),
   });
 }
 

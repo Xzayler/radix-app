@@ -22,7 +22,6 @@ export default function NaturalNumberInput(props: {
   name: string;
   value: number | undefined;
   onChange: (v: number | undefined) => void;
-  disabled?: boolean;
   required?: boolean;
 }) {
   return (
@@ -32,12 +31,12 @@ export default function NaturalNumberInput(props: {
       onChange={(v: string) => {
         props.onChange(parseInput(v));
       }}
-      disabled={props.disabled}
+      minValue={0}
       required={props.required}
     >
       <NumberField.Label>{props.label}</NumberField.Label>
       <NumberField.Input
-        class="flex disabled:bg-ui/30 no-spinner items-center justify-between px-2 border-2 border-ui rounded-md w-10 "
+        class="flex no-spinner items-center justify-between px-2 border-2 border-ui rounded-md w-10"
         type="number"
         name={props.name}
         onInput={filterNumbers}

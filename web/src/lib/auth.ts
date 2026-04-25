@@ -50,7 +50,7 @@ export async function login(formData: FormData) {
   if (!user || !(await verify(user.password, password)))
     throw new Error('Invalid login');
 
-  setCurrentUser(user);
+  await setCurrentUser(user);
 }
 
 export async function register(formData: FormData) {
@@ -62,7 +62,7 @@ export async function register(formData: FormData) {
     password: await hash(password),
   };
   const createdUser = await insertUser(newUser);
-  setCurrentUser(createdUser);
+  await setCurrentUser(createdUser);
 }
 
 export async function logout() {
@@ -93,8 +93,3 @@ export async function getLoggedInUser(): Promise<User> {
   }
   return user;
 }
-
-export const guestLogin = async () => {
-  const guestUser: User = { id: 1, userName: 'Guest' };
-  setCurrentUser(guestUser);
-};

@@ -9,11 +9,13 @@ export default function SystemsTable(props: { systems: System[] }) {
       <table class="w-full border-collapse bg-highlight rounded-md p-2 overflow-hidden">
         <thead>
           <tr class="">
-            {columns.map((col) => (
-              <th class="px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-foreground">
-                {col.label}
-              </th>
-            ))}
+            <For each={columns}>
+              {(col) => (
+                <th class="px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-foreground">
+                  {col.label}
+                </th>
+              )}
+            </For>
           </tr>
         </thead>
         <tbody>

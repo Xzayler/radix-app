@@ -20,7 +20,6 @@ export default function GenericSystemsTable(props: {
   );
 
   createEffect(() => {
-    console.log('Updating with ', listResponse());
     setHasNext(listResponse().hasNext);
     setSystems(listResponse().systems);
   });
@@ -30,7 +29,7 @@ export default function GenericSystemsTable(props: {
 
   return (
     <div class="space-y-3 p-4">
-      <div class="rounded-lg min-h-full">
+      <div class="rounded-lg min-h-full space-y-3">
         <SystemsFilters value={filters()} setValue={setFilters} />{' '}
         <Suspense fallback={<Loading />}>
           <SystemsTable systems={systems()} />

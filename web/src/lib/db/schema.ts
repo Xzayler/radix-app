@@ -24,7 +24,6 @@ export const digitTypeEnum = pgEnum('digit_type', [
   'Explicit',
   'Canonical',
   'JCanonical',
-  'Dense',
   'Adjoined',
   'Symmetric',
   'JSymmetric',
@@ -53,7 +52,7 @@ export const systemsTable = pgTable(
     digitIds: integer('digits').array(), // array of ids in vector table
     digitParam: integer('digit_param'),
   },
-  (table) => [index('digits_index').using('gin', table.digitIds)],
+  // (table) => [index('digits_index').using('gin', table.digitIds)],
 );
 
 export const digitsTable = pgTable('digits', {

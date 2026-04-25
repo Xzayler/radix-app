@@ -14,7 +14,7 @@ import {
   UserDbEntity,
   UserDbInsert,
 } from './dbTypes';
-import { DigitKind, Job, NewJob, System, User } from '~/types';
+import { DigitType, Job, NewJob, NewSystem, System, User } from '~/types';
 import {
   and,
   arrayContains,
@@ -71,7 +71,7 @@ export type SystemsFilter = {
   basePrefix?: number[];
   filterFavourites?: boolean;
   filterOwnedByUser?: boolean;
-  digitType?: DigitKind;
+  digitType?: DigitType;
   digits?: number[][];
   page: number;
   pageSize: number;
@@ -208,7 +208,7 @@ async function insertOrGetVectors(digits: number[][]): Promise<number[]> {
 }
 
 export async function insertSystem(
-  system: Omit<System, 'id'>,
+  system: NewSystem,
   userId: number,
 ): Promise<System> {
   let digitIds: number[] | undefined;

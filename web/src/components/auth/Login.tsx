@@ -1,8 +1,5 @@
 import { A, action, createAsync, useSubmission } from '@solidjs/router';
-import { login, guestLogin } from '~/api/server';
-import { Switch, Match } from 'solid-js';
-import { Navigate } from '@solidjs/router';
-import Loading from '../shared/Loading';
+import { login } from '~/api/server';
 import { isLoggedInQuery } from '~/api/queries';
 
 export const route = {
@@ -29,24 +26,24 @@ export default function Login() {
         class="mt-5 w-full max-w-lg mx-auto flex flex-col"
       >
         <input
-          class="p-3.5 bg-background rounded-t border border-ui text-foreground outline-none"
+          class="p-3.5 bg-background rounded-t border border-ui text-foreground outline-none data-invalid:bg-red-500 "
           name="username"
           type="text"
           placeholder="Username"
-          // required
-          // minLength={3}
-          // maxLength={32}
+          required
+          minLength={3}
+          maxLength={16}
         />
         <input
           class="p-3.5 bg-background rounded-b border border-ui text-foreground outline-none"
           name="password"
           type="password"
           placeholder="Password"
-          // required
+          required
         />
         <button
           type="submit"
-          class="mt-2.5 py-2.5 text-white font-bold rounded bg-accent hover:opacity-90"
+          class="mt-2.5 py-2.5 text-foreground font-bold rounded bg-accent hover:opacity-90 cursor-pointer "
         >
           Log in
         </button>

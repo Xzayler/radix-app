@@ -1,11 +1,13 @@
 import SignUp from '~/components/auth/SignUp';
 import { Title } from '@solidjs/meta';
+import Navbar from '~/components/shared/Navbar';
 
 export default function LoginPage() {
   return (
     <>
       <Title>Sign Up | Waves</Title>
-      <main class="bg-background p-5 h-dvh">
+      <Navbar user={null} />
+      <main class="bg-background p-5 max-w-dvw">
         <SignUp />
       </main>
     </>

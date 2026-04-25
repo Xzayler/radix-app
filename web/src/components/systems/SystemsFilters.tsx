@@ -1,11 +1,11 @@
 import { SystemsFilter } from '~/lib/db/operations';
-import NaturalNumberInput from '../forms/NumberInput';
+import NaturalNumberInput from '../forms/NaturalNumberInput';
 import BasePrefixFilter from './filters/BasePrefixFilter';
 import { createEffect } from 'solid-js';
 import GnsFilter from './filters/GnsFilter';
 import NameFilter from './filters/NameFilter';
 import DigitTypeFilter from './filters/DigitTypeFilter';
-import { DigitKind } from '~/types';
+import { DigitType } from '~/types';
 import FavouritesToggle from './filters/FavouritesToggle';
 import OwnToggle from './filters/OwnToggle';
 
@@ -73,7 +73,7 @@ export default function SystemsFilters(props: {
         <div class="w-32">
           <DigitTypeFilter
             value={props.value.digitType}
-            onChange={(digitType: DigitKind | undefined) => {
+            onChange={(digitType: DigitType | undefined) => {
               const fs = structuredClone(props.value);
               fs.digitType = digitType;
               props.setValue(fs);
@@ -103,42 +103,22 @@ export default function SystemsFilters(props: {
           />
         </div>
 
-        {/* Digits search */}
-        {/* <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Digits
-        </label>
-        <Input
-          type="text"
-          placeholder="e.g. [1,0] or [[1,0],[0,1]]"
-          class="w-48 h-8 text-sm font-mono"
-          defaultValue=""
-          onBlur={(e) => update({ digits: parseDigits(e.target.value) })}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              update({
-                digits: parseDigits((e.target as HTMLInputElement).value),
-              });
+        <div class="flex flex-col gap-1 ml-auto">
+          <NaturalNumberInput
+            label={
+              <span class="text-xs font-semibold uppercase tracking-wider text-foreground">
+                PageSize
+              </span>
             }
-          }}
-        />
-      </div> */}
-
-        {/* Clear */}
-        {/* {hasFilters && (
-        <Button
-          variant="ghost"
-          size="sm"
-          class="h-8 px-2 text-muted-foreground"
-          onClick={() => {
-            setFilters({});
-            onFiltersChange({});
-          }}
-        >
-          <X class="h-4 w-4 mr-1" />
-          Clear
-        </Button>
-      )} */}
+            name="pageSize"
+            value={props.value.pageSize}
+            onChange={(ps: number | undefined) => {
+              const fs = structuredClone(props.value);
+              fs.pageSize = ps ?? 1;
+              props.setValue(fs);
+            }}
+          />
+        </div>
       </div>
     </div>
   );

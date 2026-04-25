@@ -9,7 +9,6 @@
     "start": "vinxi start"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "^24.7.0",
     "@types/pg": "^8.16.0",
     "drizzle-kit": "^0.31.8",
@@ -17,6 +16,9 @@
     "tailwindcss": "^4.2.1"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1",
     "@kobalte/core": "^0.13.11",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.0",

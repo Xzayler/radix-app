@@ -1,12 +1,12 @@
-import { ExplicitDigits, System } from '~/types';
+import { Digits, ExplicitDigits, System } from '~/types';
 import StarIcon from '../shared/StarIcon';
-import { createEffect, createSignal, For, JSX, Show } from 'solid-js';
+import { createEffect, createSignal, JSX, Show } from 'solid-js';
 import VectorSet from './entryFields/VectorSet';
 import Matrix from './entryFields/Matrix';
-import { createAsync } from '@solidjs/router';
-import { favourite, getSystemJobs, unFavourite } from '~/api/server';
+import { favourite, unFavourite } from '~/api/server';
 import { Button } from '@kobalte/core/button';
-import SystemJobsTable from '../jobs/SystemJobsTable';
+import AddIcon from '../shared/AddIcon';
+import { A } from '@solidjs/router';
 
 function Field(props: { label: string; children: JSX.Element }) {
   return (
@@ -17,6 +17,18 @@ function Field(props: { label: string; children: JSX.Element }) {
       <div class="text-sm text-foreground">{props.children}</div>
     </div>
   );
+}
+
+function getDigitParam(digits: Digits) {
+  switch (digits.type) {
+    case 'Shifted':
+      return digits.shift;
+    case 'JCanonical':
+    case 'JSymmetric':
+      return digits.jValue;
+    default:
+      return null;
+  }
 }
 
 export default function SystemDetails(props: { system: System }) {
@@ -44,14 +56,12 @@ export default function SystemDetails(props: { system: System }) {
     }
   };
 
-  const jobs = createAsync(() => getSystemJobs(props.system.id), {
-    initialValue: [],
-  });
-
   const digitsCount =
     props.system.digits.type == 'Explicit'
       ? (props.system.digits as ExplicitDigits).values.length
       : 0;
+
+  const digitsParam = getDigitParam(props.system.digits);
 
   return (
     <div class="mx-auto max-w-6xl space-y-8">
@@ -76,12 +86,27 @@ export default function SystemDetails(props: { system: System }) {
         >
           <StarIcon toFill={isFavourited()} />
         </Button>
+        <Button class="ml-auto text-lg rounded-md bg-accent cursor-pointer px-1 pr-2 hover:scale-105 transition-transform">
+          <A
+            href={`/systems/${props.system.id}/jobs`}
+            class="flex items-center"
+          >
+            <div class="flex items-center">
+              <div class="h-5 aspect-square">
+                <AddIcon />
+              </div>
+              <span>New Analysis</span>
+            </div>
+          </A>
+        </Button>
       </div>
 
       <section class="rounded-lg bg-highlight">
         <div class="grid grid-cols-1 gap-x-8 gap-y-6 p-6 md:grid-cols-3">
           <Field label="Dim">{props.system.dimension}</Field>
-          <Field label="Digit Type">{props.system.digits.type}</Field>
+          <Field label="Digit Type">
+            {props.system.digits.type + (digitsParam ? `(${digitsParam})` : '')}
+          </Field>
           <Field label="GNS">
             {props.system.isGns === null
               ? '-'
@@ -148,13 +173,6 @@ export default function SystemDetails(props: { system: System }) {
             {props.system.lastJob ? props.system.lastJob.toLocaleString() : '-'}
           </Field>
         </div>
-      </section>
-
-      <section>
-        <SystemJobsTable
-          systemId={props.system.id}
-          dimension={props.system.dimension}
-        />
       </section>
     </div>
   );

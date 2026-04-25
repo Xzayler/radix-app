@@ -1,8 +1,8 @@
 import StyledSelect from '~/components/forms/StyledSelect';
-import { DigitKind } from '~/types';
+import { DigitType } from '~/types';
 
-type FilterOption = DigitKind | 'Any';
-type FilterValue = DigitKind | undefined;
+type FilterOption = DigitType | 'Any';
+type FilterValue = DigitType | undefined;
 
 export default function DigitTypeFilter(props: {
   value: FilterValue;
@@ -35,7 +35,6 @@ export default function DigitTypeFilter(props: {
         'JSymmetric',
         'Shifted',
         'Adjoined',
-        'Dense',
       ]}
       value={valueToOption(props.value)}
       onChange={(selected: FilterOption) => {

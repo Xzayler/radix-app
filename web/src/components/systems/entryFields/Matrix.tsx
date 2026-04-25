@@ -1,29 +1,40 @@
 import katex from 'katex';
+import { createEffect, createSignal, ErrorBoundary } from 'solid-js';
 
-export default function BaseMatrix(props: {
-  matrix: number[][];
-  toShow?: number;
-}) {
-  const toShow = props.toShow ?? 4;
+function generateKatexString(matrix: number[][], max?: number): string {
+  const toShow = max ?? 4;
   let latexString;
-  if (props.matrix.length > toShow) {
+  if (matrix.length > toShow) {
     const lastRow = new Array(toShow + 1).fill('...').join(' & ');
-    latexString = props.matrix
+    latexString = matrix
       .slice(0, toShow)
       .map((row) => row.slice(0, toShow).join(' & ') + ' & ...')
       .concat(lastRow)
       .join(' \\\\ ');
   } else {
-    latexString = props.matrix.map((row) => row.join(' & ')).join(' \\\\ ');
+    latexString = matrix.map((row) => row.join(' & ')).join(' \\\\ ');
   }
 
-  const html = katex.renderToString(
+  return katex.renderToString(
     `\\begin{bmatrix} ${latexString} \\end{bmatrix}`,
     {
       throwOnError: false,
       displayMode: true,
     },
   );
+}
 
-  return <div class="text-foreground" innerHTML={html}></div>;
+export default function BaseMatrix(props: {
+  matrix: number[][];
+  toShow?: number;
+}) {
+  const [katexHtml, setKatexHtml] = createSignal<string>(
+    generateKatexString(props.matrix, props.toShow),
+  );
+
+  createEffect(() => {
+    setKatexHtml(generateKatexString(props.matrix, props.toShow));
+  });
+
+  return <div class="text-foreground" innerHTML={katexHtml()}></div>;
 }

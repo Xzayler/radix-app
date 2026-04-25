@@ -1,9 +1,9 @@
 import { TextField } from '@kobalte/core/text-field';
 import { JSX } from 'solid-js';
 
-export default function TextInput(props: {
+export default function TextAreaInput(props: {
   name: string;
-  label?: JSX.Element;
+  label: JSX.Element;
   placeholder?: string;
   value?: string | undefined;
   onChange?: (v: string) => void;
@@ -11,7 +11,8 @@ export default function TextInput(props: {
   maxLength?: number;
   minLength?: number;
   required?: boolean;
-  pattern?: string;
+  disabled?: boolean;
+  ref?: HTMLInputElement | ((el: HTMLInputElement) => void) | undefined;
 }) {
   return (
     <TextField
@@ -22,15 +23,17 @@ export default function TextInput(props: {
       validationState={
         props.error && props.error.length != 0 ? 'invalid' : 'valid'
       }
-      required={props.required ?? false}
+      required={props.required}
+      disabled={props.disabled}
     >
       <TextField.Label>{props.label}</TextField.Label>
-      <TextField.Input
-        pattern={props.pattern}
+      <TextField.TextArea
+        ref={props.ref}
+        autoResize
         placeholder={props.placeholder}
         maxLength={props.maxLength}
         minLength={props.minLength}
-        class="px-2 border-2 rounded-md border-ui disabled:bg-faint data-invalid:border-red-700 valid:border-ui"
+        class="px-2 border-2 disabled:bg-ui/30 rounded-md border-ui data-invalid:border-red-700 valid:border-ui"
       />
       <div class="h-4">
         <TextField.ErrorMessage class="text-sm text-red-700 ">

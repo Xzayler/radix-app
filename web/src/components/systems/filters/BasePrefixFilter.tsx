@@ -9,7 +9,6 @@ export default function BasePrefixFilter(props: {
   value: number[] | undefined;
   onChange: (p: number[] | undefined) => void;
 }) {
-  const [input, setInput] = createSignal<string>('');
   const [error, setError] = createSignal<string | undefined>();
 
   const isVectorStringValid = (vs: string) => {

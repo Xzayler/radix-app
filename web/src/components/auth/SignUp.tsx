@@ -1,15 +1,13 @@
-import { A, redirect, useSubmission } from '@solidjs/router';
+import { A, useSubmission } from '@solidjs/router';
 import { action } from '@solidjs/router';
-import { createEffect } from 'solid-js';
 import { registerWithRedirect } from '~/api/queries';
+import TextInput from '../forms/TextInput';
+import { TextField } from '@kobalte/core/text-field';
 
 export default function Signup() {
   const registerAction = action(registerWithRedirect, 'register');
 
   const registerResponse = useSubmission(registerAction);
-  createEffect(() => {
-    console.log(registerResponse);
-  });
 
   let pwInput: HTMLInputElement | ((el: HTMLInputElement) => void) | undefined;
   let confPwInput:
@@ -28,10 +26,12 @@ export default function Signup() {
   }
 
   return (
-    <div class="h-full bg-background text-foreground flex flex-col justify-center items-center">
-      <p class="text-foreground h-6">{registerResponse.error?.message}</p>
+    <div class="h-full bg-background text-foreground flex flex-col justify-center items-center pt-4">
+      <p class="text-red-500 h-6 font-semibold">
+        {registerResponse.error?.message}
+      </p>
       <form
-        class="mt-5 w-full max-w-lg mx-auto flex flex-col"
+        class="mt-1 w-full max-w-lg mx-auto flex flex-col"
         method="post"
         action={registerAction}
       >
@@ -41,9 +41,9 @@ export default function Signup() {
           type="text"
           placeholder="Username"
           required
-          pattern="^[A-Za-z0-9_-]+$"
+          pattern={'[A-Za-z0-9 _\\-]+'}
           minLength={3}
-          maxLength={16}
+          maxLength={32}
         />
         <input
           ref={pwInput}
@@ -66,7 +66,7 @@ export default function Signup() {
           minLength={6}
           maxLength={32}
         />
-        <button class="mt-2.5 py-2.5 text-white font-bold rounded bg-accent hover:opacity-90">
+        <button class="mt-2.5 py-2.5 text-white font-bold rounded bg-accent hover:opacity-90 cursor-pointer">
           Sign up
         </button>
       </form>

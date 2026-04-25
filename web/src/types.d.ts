@@ -8,18 +8,17 @@ export type Matrix = number[][];
 
 export type Norm = 'Infinite' | 'L1' | 'L2';
 
-export type DigitKind =
+export type DigitType =
   | 'Explicit'
   | 'Canonical'
   | 'JCanonical'
-  | 'Dense'
   | 'Adjoined'
   | 'Symmetric'
   | 'JSymmetric'
   | 'Shifted';
 
 export type BaseDigit = {
-  type: DigitKind;
+  type: DigitType;
 };
 
 export type ExplicitDigits = BaseDigit & {
@@ -32,10 +31,6 @@ export type CanonicalDigits = BaseDigit & {
 export type JCanonicalDigits = BaseDigit & {
   type: 'JCanonical';
   jValue: number;
-};
-export type DenseDigits = BaseDigit & {
-  type: 'Dense';
-  normType: Norm;
 };
 export type AdjoinedDigits = BaseDigit & {
   type: 'Adjoined';
@@ -56,7 +51,6 @@ export type Digits =
   | ExplicitDigits
   | CanonicalDigits
   | JCanonicalDigits
-  | DenseDigits
   | AdjoinedDigits
   | SymmetricDigits
   | JSymmetricDigits
@@ -92,7 +86,10 @@ export type Job = {
   error?: string;
 };
 
-export type NewSystem = Omit<System, 'id'>;
+export type NewSystem = Omit<
+  System,
+  'id' | 'isFavourited' | 'isGns' | 'lastJob' | 'signature'
+>;
 export type NewJob = Omit<
   Job,
   'id' | 'outputUri' | 'createdAt' | 'startedAt' | 'finishedAt'

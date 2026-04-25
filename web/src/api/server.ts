@@ -4,7 +4,6 @@ import {
   getCurrentUser as gcu,
   logout as lo,
   register as rg,
-  guestLogin as gl,
   getLoggedInUser,
 } from '~/lib/auth';
 import {
@@ -20,15 +19,20 @@ import {
 } from '~/lib/db/operations';
 import { parseInputFile } from '~/lib/utils/fileParser';
 import {
-  validateFileName,
+  validateInputAsName,
   validateInputAsFile,
   validateInputAsJobType,
   validateInputAsNorm,
-  validateInputAsNumber,
+  validateInputAsInteger,
   validateInputAsVector,
+  validateInputAsPositiveInteger,
+  validateInputAsFlatMatrix,
+  validateInputAsDigitType,
+  validateInputAsExplicitDigits,
+  validateInputAsJValue,
 } from '~/lib/validators';
 import { getDownloadUrl as gdu } from '~/lib/minio/adapter';
-import { NewJob, System } from '~/types';
+import { Digits, ExplicitDigits, NewJob, NewSystem, System } from '~/types';
 
 // Auth
 // TODO: Move formData handling here.
@@ -36,7 +40,6 @@ export const login = li;
 export const getCurrentUser = gcu;
 export const logout = lo;
 export const register = rg;
-export const guestLogin = gl;
 
 // Db Entity operations
 export const getSystemById = async (systemId: number) => {
@@ -55,23 +58,64 @@ export const getSystems = async (params: SystemsFilter) => {
     'Error listing systems',
   );
 };
-export const uploadSystem = async (formData: FormData): Promise<System> => {
+export const uploadSystemFromFile = async (
+  formData: FormData,
+): Promise<System> => {
   const user = await getLoggedInUser();
 
   const file = validateInputAsFile(formData.get('input-file'));
-  const name = validateFileName(formData.get('name'), 'name');
   const inputData = await parseInputFile(file);
-  inputData.name = name;
 
   return await dbErrorWrapper(
     () => insertSystem(inputData, user.id),
     'Error uploading system',
   );
 };
+
+export const uploadSystemFromForm = async (formData: FormData) => {
+  const user = await getLoggedInUser();
+
+  const name = validateInputAsName(formData.get('name'), 'name');
+  const dim = validateInputAsPositiveInteger(formData.get('dim'), 'dim');
+  const base = validateInputAsFlatMatrix(formData.get('base'), dim);
+  const digitType = validateInputAsDigitType(formData.get('dtype'));
+  let digits: Digits;
+  if (digitType == 'Explicit') {
+    const explDigits = validateInputAsExplicitDigits(
+      formData.get('digits'),
+      dim,
+    );
+    digits = { type: digitType, values: explDigits };
+  } else if (digitType == 'JCanonical' || digitType == 'JSymmetric') {
+    const jValue = validateInputAsJValue(formData.get('param'), 'param', dim);
+    digits = { type: digitType, jValue: jValue };
+  } else if (digitType == 'Shifted') {
+    const shift = validateInputAsPositiveInteger(
+      formData.get('param'),
+      'param',
+    );
+    digits = { type: digitType, shift: shift };
+  } else {
+    digits = { type: digitType };
+  }
+
+  const newSystem: NewSystem = {
+    name,
+    dimension: dim,
+    base,
+    digits,
+  };
+
+  return await dbErrorWrapper(
+    () => insertSystem(newSystem, user.id),
+    'Error uploading system',
+  );
+};
+
 export const queueJob = async (formData: FormData) => {
   const user = await getLoggedInUser();
 
-  const systemId = validateInputAsNumber(
+  const systemId = validateInputAsInteger(
     formData.get('system-id'),
     'system id',
   );
