@@ -45,7 +45,8 @@ pub enum NormType {
 pub struct Job {
   pub system: DbSystem,
   pub norm: NormType,
-  pub job_type: JobType
+  pub job_type: JobType,
+  pub walk_from: Option<Vec<i32>>
 }
 
 impl FromRow<'_, PgRow> for Job {
@@ -70,7 +71,8 @@ impl FromRow<'_, PgRow> for Job {
     Ok(Self {
       system: system,
       job_type: row.get("job_type"),
-      norm: row.get("norm")
+      norm: row.get("norm"),
+      walk_from: row.get("start_point"),
     })
   }
 }

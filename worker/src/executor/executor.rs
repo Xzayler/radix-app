@@ -1,6 +1,6 @@
 use nalgebra::{DMatrix, DVector};
 
-use crate::{db::{db::{self, update_db_with_job_error}, model::{DbSystem, DigitType, Job, JobType, NormType}}, executor::algorithm::norms::{Norm, NormEnum}, error::WorkerError};
+use crate::{db::{db::{self, update_db_with_job_error}, model::{DbSystem, DigitType, Job, JobType, NormType}}, error::WorkerError, executor::algorithm::{norms::{Norm, NormEnum}, operations::walk}};
 use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_explicit, get_j_canonical, get_j_symmetric, get_shifted_canonical, get_symmetric}, operations::{classification, decision}, systems::SystemEnum, systems_factories::{BuilderContext, MatcherContext, SystemFactory, system_factories}};
 use crate::minio::minio::upload_job_results;
 
@@ -8,7 +8,8 @@ use crate::minio::minio::upload_job_results;
 struct JobOutput {
   is_gns: Option<bool>,
   signature: Option<Vec<i32>>,
-  all_loops: Option<Vec<Vec<DVector<f64>>>>
+  all_loops: Option<Vec<Vec<DVector<f64>>>>,
+  path: Option<Vec<DVector<f64>>>
 }
 
 pub async fn run(job_id: i32) -> () {
@@ -207,7 +208,8 @@ fn build_job_output(job: &Job, system: &SystemEnum) -> Result<JobOutput, WorkerE
   let mut job_output: JobOutput = JobOutput { 
     is_gns: None,
     signature: None,
-    all_loops: None
+    all_loops: None,
+    path: None,
   };
 
   match job.job_type {
@@ -241,7 +243,22 @@ fn build_job_output(job: &Job, system: &SystemEnum) -> Result<JobOutput, WorkerE
         job_output.signature = Some(vec![1]);
       }
     },
-    JobType::Walk => ()
+    JobType::Walk => {
+      println!("Starting walk operation");
+      let start_point = match &job.walk_from {
+        Some(point) => point,
+        None => {
+          return Err(WorkerError::InvalidInput("Walk job without starting point".to_string()));
+        }
+      };
+      let res = match walk(system, build_na_vector(&start_point)) {
+        Ok(res) => res,
+        Err(err) => {
+          return Err(WorkerError::Operation(err.to_string()))
+        }
+      };
+      job_output.path = Some(res);
+    }
   };
 
   Ok(job_output)

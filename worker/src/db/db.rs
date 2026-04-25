@@ -41,7 +41,12 @@ pub async fn get_job(pool: &sqlx::PgPool, id: i32) -> Result<Job, WorkerError> {
       SELECT array_agg(v.elements)
       FROM digits v
       WHERE v.id = ANY(systems.digits)
-    )::text as digits
+    )::text as digits,
+    (
+      SELECT d.elements
+      FROM digits d
+      WHERE d.id = jobs.walk_from
+    ) as start_point
     FROM jobs
     JOIN systems ON jobs.system_id = systems.id
     WHERE jobs.id = {id}").as_str()

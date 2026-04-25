@@ -205,6 +205,26 @@ pub fn get_loop_floyd<'a>(
   Ok(loop_elements)
 }
 
+fn walk_recursive(
+  system: &SystemEnum,
+  point: DVector<f64>,
+  walked_points: &mut Vec<DVector<f64>>,
+) -> Result<(), WorkerError> {
+  if loop_contains_point(walked_points, &point) {
+    return Ok(());
+  }
+
+  walked_points.push(point.clone());
+  let next_point = system.phi(&point)?;
+  walk_recursive(system, next_point, walked_points)
+}
+
+pub fn walk(system: &SystemEnum, start_point: DVector<f64>) -> Result<Vec<DVector<f64>>, WorkerError> {
+  let mut walked_points = Vec::new();
+  walk_recursive(system, start_point, &mut walked_points)?;
+  Ok(walked_points)
+}
+
 #[cfg(test)]
 mod tests {
   use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_explicit}, norms::NormEnum, systems::GenericSystem, systems_factories::{BuilderContext, GenericFactory, SystemFactory}};
@@ -230,6 +250,33 @@ use super::*;
       DVector::from_column_slice(&[0.0, 0.0])
       ];
     let res = get_loop_floyd(&system, &start)?;
+    assert_eq!(expected, res);
+
+    Ok(())
+  }
+
+  #[test]
+  fn walk_test() -> Result<(), WorkerError> {
+    let base: DMatrix<f64> = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
+    let d: Vec<DVector<f64>> = vec![
+      DVector::from_row_slice(&[0.0, 0.0]),
+      DVector::from_row_slice(&[1.0, 0.0]),
+      DVector::from_row_slice(&[0.0, 1.0]),
+      DVector::from_row_slice(&[0.0, -1.0]),
+      DVector::from_row_slice(&[-6.0, 5.0]),
+    ];
+    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+
+    let start: DVector<f64> = DVector::from_column_slice(&[-6.0, 3.0]);
+    let expected = vec![
+      DVector::from_column_slice(&[-6.0, 3.0]),
+      DVector::from_column_slice(&[-2.0, 2.0]),
+      DVector::from_column_slice(&[1.0, -2.0]),
+      DVector::from_column_slice(&[0.0, -1.0]),
+      DVector::from_column_slice(&[0.0, 0.0]),
+    ];
+    let res = walk(&system, start)?;
     assert_eq!(expected, res);
 
     Ok(())
