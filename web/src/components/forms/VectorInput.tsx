@@ -10,29 +10,37 @@ export default function VectorInput(props: {
   setValue?: (s: string) => void;
   placeholder?: string;
 }) {
-  // const [value, setValue] = createSignal<string>('');
   let [validationState, setValidationState] = createSignal<
     'valid' | 'invalid' | undefined
   >('valid');
   const [error, setError] = createSignal<string>('');
 
+  let inputRef: HTMLInputElement | ((el: HTMLInputElement) => void) | undefined;
   const isVectorStringValid = (vs: string): boolean => {
     const vectorString = vs.trim();
     const vectorValueRegex = /^-?\d+(?: -?\d+)*$/g;
     const regmatch = vectorValueRegex.test(vectorString);
+    const inputEl = inputRef as HTMLInputElement;
     if (!regmatch) {
-      setError('Input format is invalid');
+      const msg = 'Input format is invalid';
+      inputEl.setCustomValidity(msg);
+      setError(msg);
       return false;
     }
     const values = vectorString.split(' ').map((s) => parseInt(s));
     if (values.length != props.dim) {
-      setError("The point's dimensions doesn't match the system's");
+      const msg = "The point's dimensions doesn't match the system's";
+      inputEl.setCustomValidity(msg);
+      setError(msg);
       return false;
     }
     if (!values.every((v) => !isNaN(v))) {
-      setError('The vector elements should be integers');
+      const msg = 'The vector elements should be integers';
+      inputEl.setCustomValidity(msg);
+      setError(msg);
       return false;
     }
+    inputEl.setCustomValidity('');
     setError('');
     return true;
   };
@@ -57,6 +65,7 @@ export default function VectorInput(props: {
     >
       <TextField.Label class="block">{props.label}</TextField.Label>
       <TextField.Input
+        ref={inputRef}
         disabled={props.disabled}
         placeholder={props.placeholder}
         class="px-2 border-2 rounded-md border-ui disabled:bg-faint data-invalid:border-red-700 valid:border-ui"

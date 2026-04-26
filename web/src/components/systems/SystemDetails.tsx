@@ -92,10 +92,7 @@ export default function SystemDetails(props: { system: System }) {
             class="flex items-center"
           >
             <div class="flex items-center">
-              <div class="h-5 aspect-square">
-                <AddIcon />
-              </div>
-              <span>New Analysis</span>
+              <span>{'System Analyses >'}</span>
             </div>
           </A>
         </Button>

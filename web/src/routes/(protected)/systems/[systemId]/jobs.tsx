@@ -7,13 +7,15 @@ import { useSystemContext } from '~/lib/SystemContext';
 export default function SystemJobs() {
   const system = useSystemContext();
   return (
-    <Suspense fallback={<Loading />}>
-      <Show when={system()}>
-        <SystemJobsTable
-          systemId={system()!.id}
-          dimension={system()!.dimension}
-        />
-      </Show>
-    </Suspense>
+    <div class="mx-auto max-w-6xl space-y-8">
+      <Suspense fallback={<Loading />}>
+        <Show when={system()}>
+          <SystemJobsTable
+            systemId={system()!.id}
+            dimension={system()!.dimension}
+          />
+        </Show>
+      </Suspense>
+    </div>
   );
 }

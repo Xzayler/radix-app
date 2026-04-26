@@ -1,4 +1,4 @@
-import { createEffect, createSignal, ErrorBoundary } from 'solid-js';
+import { createSignal, ErrorBoundary } from 'solid-js';
 import Matrix from './entryFields/Matrix';
 import TextInput from '../forms/TextInput';
 import NaturalNumberInput from '../forms/NaturalNumberInput';

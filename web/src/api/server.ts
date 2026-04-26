@@ -32,10 +32,9 @@ import {
   validateInputAsJValue,
 } from '~/lib/validators';
 import { getDownloadUrl as gdu } from '~/lib/minio/adapter';
-import { Digits, ExplicitDigits, NewJob, NewSystem, System } from '~/types';
+import { Digits, NewJob, NewSystem, System } from '~/types';
 
 // Auth
-// TODO: Move formData handling here.
 export const login = li;
 export const getCurrentUser = gcu;
 export const logout = lo;
@@ -134,11 +133,11 @@ export const queueJob = async (formData: FormData) => {
     norm: norm,
   };
 
-  if (jobType == 'Walk') {
+  if (jobType == 'Path') {
     const point = validateInputAsVector(
       formData.get('grid-point'),
       system.dimension,
-      'grid point',
+      'start point',
     );
     job.walkFrom = point;
   }

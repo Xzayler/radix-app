@@ -127,7 +127,7 @@ export function jobFromDbEntity(
     userId: dbEntity.userId,
     systemId: dbEntity.systemId,
     status: dbEntity.status,
-    jobType: dbEntity.jobType,
+    jobType: dbEntity.jobType == 'Walk' ? 'Path' : dbEntity.jobType,
     norm: dbEntity.norm,
     walkFrom: gridPoint ?? undefined,
     outputUri: dbEntity.outputUri ?? undefined,
@@ -147,7 +147,7 @@ export function dbInsertFromJob(
     userId: job.userId,
     systemId: job.systemId,
     status: job.status,
-    jobType: job.jobType,
+    jobType: job.jobType == 'Path' ? 'Walk' : job.jobType,
     norm: job.norm,
     walkFrom: gridPointId,
   };

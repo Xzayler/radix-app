@@ -63,10 +63,10 @@ export function validateInputAsVector(
     throw new Error(`No ${entityName} provided`);
   }
   const values = input.split(' ').map((s) => parseInt(s));
-  if (values.length == dim && values.every((v) => !isNaN(v))) {
+  if (values.length == dim && values.every((v) => Number.isInteger(v))) {
     return values;
   } else {
-    throw new Error(`Invalid ${entityName}values`);
+    throw new Error(`Invalid ${entityName} values`);
   }
 }
 

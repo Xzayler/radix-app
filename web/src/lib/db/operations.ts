@@ -160,7 +160,10 @@ export async function getSystems(
     .from(systemsTable)
     .leftJoin(favouritesTable, eq(systemsTable.id, favouritesTable.systemId))
     .where(and(...filters))
-    .orderBy(desc(systemsTable.lastJob))
+    .orderBy(
+      desc(systemsTable.lastJob).append(sql` nulls last`),
+      desc(systemsTable.id),
+    )
     .limit(params.pageSize + 1)
     .offset((params.page - 1) * params.pageSize);
 

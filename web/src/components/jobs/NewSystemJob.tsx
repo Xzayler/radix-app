@@ -12,15 +12,6 @@ export default function NewSystemJob(props: {
 }) {
   const queueJobAction = action(queueJob);
   const queueJobSubmission = useSubmission(queueJobAction);
-  createEffect(() => {
-    if (queueJobSubmission.pending) {
-      console.log('Pending Submission...');
-    } else {
-      console.log('Not pending');
-      console.log(queueJobSubmission.error);
-      console.log(queueJobSubmission.result);
-    }
-  });
 
   const [typeValue, setTypeValue] = createSignal<JobType>('Decision');
 
@@ -33,9 +24,7 @@ export default function NewSystemJob(props: {
         action={queueJobAction}
       >
         <div>
-          <Show when={!queueJobSubmission.pending && queueJobSubmission.error}>
-            <span>{queueJobSubmission.error}</span>
-          </Show>
+          <div class="text-red-500">{queueJobSubmission.error?.message}</div>
         </div>
         <input
           type="text"
@@ -51,10 +40,10 @@ export default function NewSystemJob(props: {
             defaultValue={'Infinite'}
           />
           <StyledSelect<JobType>
-            label="JobType"
+            label="Analysis Type"
             name="job-type"
             placeholder="Type"
-            options={['Walk', 'Decision', 'Classification']}
+            options={['Path', 'Decision', 'Classification']}
             value={typeValue()}
             onChange={setTypeValue}
           />
@@ -63,10 +52,12 @@ export default function NewSystemJob(props: {
             name="grid-point"
             placeholder="0 1 2 ..."
             dim={props.dimension}
-            disabled={typeValue() != 'Walk'}
+            disabled={typeValue() != 'Path'}
           />
-          {/* </div> */}
-          <Button class="bg-accent rounded-md px-4 py-2 ml-auto" type="submit">
+          <Button
+            class="bg-accent rounded-md px-4 py-2 ml-auto hover:opacity-90 cursor-pointer"
+            type="submit"
+          >
             Start
           </Button>
         </div>

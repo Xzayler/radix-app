@@ -8,7 +8,7 @@ import { User } from '~/types';
 export default function Navbar(props: { user: User | null | undefined }) {
   return (
     <header class="sticky text-foreground top-0 rounded-b-md bg-highlight overflow-hidden">
-      <div class="flex items-center py-2 px-9 justify-between">
+      <div class="mx-auto max-w-6xl flex items-center py-2 justify-between">
         <div class="basis-1/4"></div>
         <div class="grow flex items-center justify-center gap-6">
           <A

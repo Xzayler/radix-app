@@ -69,7 +69,7 @@ export type System = {
 };
 
 export type JobStatus = 'Pending' | 'Running' | 'Succeeded' | 'Failed';
-export type JobType = 'Walk' | 'Decision' | 'Classification';
+export type JobType = 'Path' | 'Decision' | 'Classification';
 
 export type Job = {
   id: number;
