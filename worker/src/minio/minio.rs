@@ -35,7 +35,7 @@ pub async fn create_client() -> Result<Client,WorkerError> {
   Ok(Client::from_conf(s3_config))
 }
 
-pub async fn upload_job_results(job_id: i32, loops: &Vec<Vec<DVector<f64>>>) -> Result<String, WorkerError> {
+pub async fn upload_loop_results(job_id: i32, loops: &Vec<Vec<DVector<f64>>>) -> Result<String, WorkerError> {
   let client = create_client().await?;
   let bucket = env::var("MINIO_BUCKET").map_err(|err| WorkerError::Environment("MINIO_BUCKET must be set: ".to_string() + err.to_string().as_str()))?;
   let key = format!("{job_id}.json");
@@ -126,4 +126,59 @@ async fn write_json_bytes(file: &mut File, bytes: &[u8]) -> Result<(), WorkerErr
     .write_all(bytes)
     .await
     .map_err(|err| WorkerError::Minio(format!("Failed to write JSON output: {err}")))
+}
+
+pub async fn upload_path_result(job_id: i32, path: &Vec<DVector<f64>>) -> Result<String, WorkerError> {
+  let client = create_client().await?;
+  let bucket = env::var("MINIO_BUCKET").map_err(|err| WorkerError::Environment("MINIO_BUCKET must be set: ".to_string() + err.to_string().as_str()))?;
+  let key = format!("{job_id}.json");
+  let temp_path = temp_output_path(job_id)?;
+
+  let upload_result = async {
+    let mut file = File::create(&temp_path)
+      .await
+      .map_err(|err| WorkerError::Minio(format!("Failed to create temp file: {err}")))?;
+
+    write_json_bytes(&mut file, b"[").await?;
+    for (point_index, point) in path.iter().enumerate() {
+      if point_index > 0 {
+        write_json_bytes(&mut file, b",").await?;
+      }
+      write_dvector_json(&mut file, point).await?;
+    }
+    write_json_bytes(&mut file, b"]").await?;
+
+    file
+      .flush()
+      .await
+      .map_err(|err| WorkerError::Minio(format!("Failed to flush temp file: {err}")))?;
+    drop(file);
+
+    let body = ByteStream::from_path(&temp_path)
+      .await
+      .map_err(|err| WorkerError::Minio(format!("Failed to read temp file for upload: {err}")))?;
+
+    client
+      .put_object()
+      .bucket(bucket)
+      .key(&key)
+      .content_type("application/json")
+      .body(body)
+      .send()
+      .await
+      .map_err(|err|
+        WorkerError::Minio(format!("Failed to upload job results: {err}"))
+      )?;
+
+    Ok::<(), WorkerError>(())
+  }
+  .await;
+
+  let cleanup_result = fs::remove_file(&temp_path).await;
+  if let Err(err) = cleanup_result {
+    println!("Failed to clean up temp file: {err}");
+  }
+
+  upload_result?;
+  Ok(key)
 }

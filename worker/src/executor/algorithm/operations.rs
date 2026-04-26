@@ -86,18 +86,9 @@ pub fn classification(
   system: &SystemEnum,
 ) -> Result<Vec<Vec<DVector<f64>>>, WorkerError> {
   let start = SystemTime::now();
-  println!("Started at {:?}", start);
   let (l_corner, h_corner) = system.get_cover_box()?;
   println!("Box: {:?}, {:?}", l_corner, h_corner);
   let unique_loops: Vec<Vec<DVector<f64>>> = get_all_loops(&l_corner, &h_corner, system)?;
-  
-  println!(
-    "Duration: {:?}",
-    SystemTime::now()
-      .duration_since(start)
-      .expect("time should go forward")
-  );
-
   Ok(unique_loops)
 }
 
@@ -129,13 +120,11 @@ fn has_any_loop<'a>(
     match loop_set {
       Ok(ref v) => {
         if v.len() != 1 {
-          // Loop [0] has length 1, could be 0 point
           println!("Loop: {:?}", v);
           return true;
         }
         let loop_point = match v.get(0) {
           Some(point) => point,
-          // TODO: Handle errors
           None => {
             println!("Error for: {:?}", v);
             return true;
@@ -163,19 +152,9 @@ pub fn decision(
   if !satisfies_unit_condition(system.get_base()) {
     return Ok(false);
   }
-
-  let start = SystemTime::now();
-  println!("Started at {:?}", start);
   let (l_corner, h_corner) = system.get_cover_box()?;
   println!("Cover box {:?}, {:?}", l_corner, h_corner);
   let res = has_any_loop(&l_corner, &h_corner, system);
-
-  println!(
-    "Duration: {:?}",
-    SystemTime::now()
-      .duration_since(start)
-      .expect("time should go forward")
-  );
 
   Ok(!res)
 }
@@ -205,29 +184,26 @@ pub fn get_loop_floyd<'a>(
   Ok(loop_elements)
 }
 
-fn walk_recursive(
-  system: &SystemEnum,
-  point: DVector<f64>,
-  walked_points: &mut Vec<DVector<f64>>,
-) -> Result<(), WorkerError> {
-  if loop_contains_point(walked_points, &point) {
-    return Ok(());
-  }
-
-  walked_points.push(point.clone());
-  let next_point = system.phi(&point)?;
-  walk_recursive(system, next_point, walked_points)
-}
-
 pub fn walk(system: &SystemEnum, start_point: DVector<f64>) -> Result<Vec<DVector<f64>>, WorkerError> {
   let mut walked_points = Vec::new();
-  walk_recursive(system, start_point, &mut walked_points)?;
+  let mut point = start_point;
+
+  loop {
+    if loop_contains_point(&walked_points, &point) {
+      walked_points.push(point);
+      break;
+    }
+
+    walked_points.push(point.clone());
+    point = system.phi(&point)?;
+  }
+
   Ok(walked_points)
 }
 
 #[cfg(test)]
 mod tests {
-  use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_explicit}, norms::NormEnum, systems::GenericSystem, systems_factories::{BuilderContext, GenericFactory, SystemFactory}};
+  use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_canonical, get_explicit, get_symmetric}, norms::NormEnum, systems::GenericSystem, systems_factories::{BuilderContext, GenericFactory, SystemFactory}};
 
 use super::*;
   use nalgebra::DMatrix;
@@ -275,6 +251,7 @@ use super::*;
       DVector::from_column_slice(&[1.0, -2.0]),
       DVector::from_column_slice(&[0.0, -1.0]),
       DVector::from_column_slice(&[0.0, 0.0]),
+      DVector::from_column_slice(&[0.0, 0.0]),
     ];
     let res = walk(&system, start)?;
     assert_eq!(expected, res);
@@ -307,6 +284,25 @@ use super::*;
     ];
 
     let digits = SystemDigitsEnum::Explicit(get_explicit(&base, digits).expect("digits should be fine"));
+    let builder_ctx = BuilderContext {
+      base: base,
+      digits,
+      norm: NormEnum::Infinite
+    };
+    let system = GenericFactory.create(builder_ctx)?;
+    let res = match decision(&system) {
+      Ok(b) => b,
+      Err(_err) => panic!("error in decision")
+    };
+    assert!(res);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_decimal_test() -> Result<(), WorkerError> {
+    let base: DMatrix<f64> = DMatrix::from_row_slice(1, 1, &[10.0]);
+
+    let digits = SystemDigitsEnum::Symmetric(get_symmetric(&base).expect("msg"));
     let builder_ctx = BuilderContext {
       base: base,
       digits,

@@ -165,7 +165,7 @@ impl System for GenericSystem {
 mod tests {
   use crate::executor::algorithm::digits::get_explicit;
 
-use super::*;
+  use super::*;
 
   #[test]
   fn generic_system_phi_test() -> Result<(), WorkerError> {

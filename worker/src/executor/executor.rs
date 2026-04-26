@@ -2,7 +2,7 @@ use nalgebra::{DMatrix, DVector};
 
 use crate::{db::{db::{self, update_db_with_job_error}, model::{DbSystem, DigitType, Job, JobType, NormType}}, error::WorkerError, executor::algorithm::{norms::{Norm, NormEnum}, operations::walk}};
 use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_explicit, get_j_canonical, get_j_symmetric, get_shifted_canonical, get_symmetric}, operations::{classification, decision}, systems::SystemEnum, systems_factories::{BuilderContext, MatcherContext, SystemFactory, system_factories}};
-use crate::minio::minio::upload_job_results;
+use crate::minio::minio::{upload_loop_results, upload_path_result};
 
 #[derive(Debug)]
 struct JobOutput {
@@ -51,7 +51,17 @@ pub async fn run(job_id: i32) -> () {
   let mut output_uri = None;
   if let Some(loops) = output.all_loops {
     println!("Uploading to minio.");
-    output_uri = match upload_job_results(job_id, &loops).await {
+    output_uri = match upload_loop_results(job_id, &loops).await {
+      Ok(uri) => Some(uri),
+      Err(err) => {
+        panic!("Couldn't upload file. {err}")
+      }
+    }
+  }
+
+  if let Some(path) = output.path {
+    println!("Uploading to minio");
+    output_uri = match upload_path_result(job_id, &path).await {
       Ok(uri) => Some(uri),
       Err(err) => {
         panic!("Couldn't upload file. {err}")

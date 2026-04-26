@@ -17,7 +17,6 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
 		Err(_) => DEFAULT_POLLING_TIMEOUT_SECONDS
 	};
 
-
   loop {
     let pending_job = match db::pick_pending_job(&pool).await {
       Ok(res) => res,
@@ -25,7 +24,7 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
         return Err(SupervisorError::Database(err.to_string()));
       }
     };
-    println!("{:?}", pending_job);
+
     match pending_job {
       Some(job) => {
         let id = job.id;
@@ -41,7 +40,6 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
           };
 
         let status = match child.wait() {
-          // TODO error if status != 0
           Ok(status) => status,
           Err(err) => {
             return Err(SupervisorError::ChildError(err.to_string()))
@@ -59,8 +57,6 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
         }
       },
       None => {
-        println!("Sleeping");
-        // TODO: Use configuration data to set polling frequency
         tokio::time::sleep(std::time::Duration::from_secs(polling_timeout)).await;
       }
     }
