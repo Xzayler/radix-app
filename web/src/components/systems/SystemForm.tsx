@@ -103,7 +103,7 @@ export default function SystemForm() {
                 'Symmetric',
                 'JSymmetric',
                 'Shifted',
-                'Adjoined',
+                'Adjoint',
               ]}
               value={digitType()}
               onChange={setDigitType}

@@ -8,7 +8,7 @@ pub enum DigitType {
   Explicit,
   Canonical,
   JCanonical,
-  Adjoined,
+  Adjoint,
   Symmetric,
   JSymmetric,
   Shifted

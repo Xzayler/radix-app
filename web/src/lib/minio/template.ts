@@ -6,7 +6,7 @@ export const template = `{
     [1, 2]              //  the dimension.
   ],
   "digits": {           // Required object
-    "type": "Explicit", // Required, type of digits. Can be Explicit, Canonical, JCanonical, Adjoined, Symmetric, JSymmetric, Shifted
+    "type": "Explicit", // Required, type of digits. Can be Explicit, Canonical, JCanonical, Adjoint, Symmetric, JSymmetric, Shifted
     "jValue": 1,        // Required for JCanonical, JSymetric digits. Do not include otherwise
     "shift": 1,         // Required for Shifted digits. A positive integer. Must be <= |det(base)|
     "values": [         // Required for Explicit digits. It is an array of arrays of integers

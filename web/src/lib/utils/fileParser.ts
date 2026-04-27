@@ -49,7 +49,7 @@ function isDigit(obj: unknown, dim: number): obj is Digits {
     case 'JCanonical':
       return typeof o.jValue === 'number';
 
-    case 'Adjoined':
+    case 'Adjoint':
       return true;
 
     case 'Symmetric':
@@ -104,7 +104,7 @@ function parseDigits(obj: Object, dim: number): Digits {
       }
       const shift = validateNumberAsPositiveInteger(obj.shift, 'shift');
       return { type, shift } as ShiftedDigits;
-    case 'Adjoined':
+    case 'Adjoint':
     case 'Canonical':
     case 'Symmetric':
       return { type } as Digits;

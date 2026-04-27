@@ -148,7 +148,7 @@ export function digitNeedsParam(digitType: DigitType): boolean {
     case 'Canonical':
     case 'Explicit':
     case 'Symmetric':
-    case 'Adjoined':
+    case 'Adjoint':
       return false;
     case 'JCanonical':
     case 'JSymmetric':
@@ -228,7 +228,7 @@ export function validateInputAsFlatMatrix(
 
 export function validateStringAsDigitType(type: string): DigitType {
   const types: string[] = [
-    'Adjoined',
+    'Adjoint',
     'Canonical',
     'JCanonical',
     'Explicit',

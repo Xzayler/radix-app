@@ -20,14 +20,14 @@ export const isLoggedInQuery = query(async () => {
   'use server';
   const user = await getCurrentUser();
   if (user) {
-    throw redirect('/');
+    throw redirect('/systems');
   }
 }, 'isLoggedIn');
 
 export const registerWithRedirect = async (formData: FormData) => {
   'use server';
   await register(formData);
-  throw redirect('/', {
+  throw redirect('/systems', {
     revalidate: [getCurrentUserQueryWithRedirect.key, isLoggedInQuery.key],
   });
 };
@@ -35,7 +35,7 @@ export const registerWithRedirect = async (formData: FormData) => {
 export const logoutWithRedirect = action(async () => {
   'use server';
   await logout();
-  throw redirect('/', {
+  throw redirect('/login', {
     revalidate: [getCurrentUserQueryWithRedirect.key, isLoggedInQuery.key],
   });
 }, 'logout');

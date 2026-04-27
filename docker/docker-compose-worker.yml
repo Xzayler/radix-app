@@ -10,6 +10,7 @@ services:
       MINIO_ENDPOINT: ${MINIO_ENDPOINT}
       MINIO_PORT: ${MINIO_PORT}
       MINIO_BUCKET: ${MINIO_BUCKET}
+      POLLING_RATE: ${POLLING_RATE_SECONDS}
     restart: unless-stopped
 
 networks:

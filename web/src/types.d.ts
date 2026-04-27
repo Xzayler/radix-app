@@ -12,7 +12,7 @@ export type DigitType =
   | 'Explicit'
   | 'Canonical'
   | 'JCanonical'
-  | 'Adjoined'
+  | 'Adjoint'
   | 'Symmetric'
   | 'JSymmetric'
   | 'Shifted';
@@ -32,8 +32,8 @@ export type JCanonicalDigits = BaseDigit & {
   type: 'JCanonical';
   jValue: number;
 };
-export type AdjoinedDigits = BaseDigit & {
-  type: 'Adjoined';
+export type AdjointDigits = BaseDigit & {
+  type: 'Adjoint';
 };
 export type SymmetricDigits = BaseDigit & {
   type: 'Symmetric';
@@ -51,7 +51,7 @@ export type Digits =
   | ExplicitDigits
   | CanonicalDigits
   | JCanonicalDigits
-  | AdjoinedDigits
+  | AdjointDigits
   | SymmetricDigits
   | JSymmetricDigits
   | ShiftedDigits;

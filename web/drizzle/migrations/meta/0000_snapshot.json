@@ -39,9 +39,7 @@
         "digits_elements_unique": {
           "name": "digits_elements_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "elements"
-          ]
+          "columns": ["elements"]
         }
       },
       "policies": {},
@@ -71,12 +69,8 @@
           "name": "favourites_user_id_users_id_fk",
           "tableFrom": "favourites",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -84,12 +78,8 @@
           "name": "favourites_system_id_systems_id_fk",
           "tableFrom": "favourites",
           "tableTo": "systems",
-          "columnsFrom": [
-            "system_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["system_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -97,10 +87,7 @@
       "compositePrimaryKeys": {
         "favourites_user_id_system_id_pk": {
           "name": "favourites_user_id_system_id_pk",
-          "columns": [
-            "user_id",
-            "system_id"
-          ]
+          "columns": ["user_id", "system_id"]
         }
       },
       "uniqueConstraints": {},
@@ -237,12 +224,8 @@
           "name": "jobs_user_id_users_id_fk",
           "tableFrom": "jobs",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -250,12 +233,8 @@
           "name": "jobs_system_id_systems_id_fk",
           "tableFrom": "jobs",
           "tableTo": "systems",
-          "columnsFrom": [
-            "system_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["system_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -371,12 +350,8 @@
           "name": "systems_user_id_users_id_fk",
           "tableFrom": "systems",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -444,9 +419,7 @@
         "users_user_name_unique": {
           "name": "users_user_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_name"
-          ]
+          "columns": ["user_name"]
         }
       },
       "policies": {},
@@ -463,7 +436,7 @@
         "Canonical",
         "JCanonical",
         "Dense",
-        "Adjoined",
+        "Adjoint",
         "Symmetric",
         "JSymmetric",
         "Shifted"
@@ -472,30 +445,17 @@
     "public.job_type": {
       "name": "job_type",
       "schema": "public",
-      "values": [
-        "Walk",
-        "Decision",
-        "Classification"
-      ]
+      "values": ["Walk", "Decision", "Classification"]
     },
     "public.norm_type": {
       "name": "norm_type",
       "schema": "public",
-      "values": [
-        "Infinite",
-        "L1",
-        "L2"
-      ]
+      "values": ["Infinite", "L1", "L2"]
     },
     "public.status": {
       "name": "status",
       "schema": "public",
-      "values": [
-        "Pending",
-        "Running",
-        "Succeeded",
-        "Failed"
-      ]
+      "values": ["Pending", "Running", "Succeeded", "Failed"]
     }
   },
   "schemas": {},

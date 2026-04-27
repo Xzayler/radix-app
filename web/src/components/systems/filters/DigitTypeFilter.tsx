@@ -34,7 +34,7 @@ export default function DigitTypeFilter(props: {
         'Symmetric',
         'JSymmetric',
         'Shifted',
-        'Adjoined',
+        'Adjoint',
       ]}
       value={valueToOption(props.value)}
       onChange={(selected: FilterOption) => {

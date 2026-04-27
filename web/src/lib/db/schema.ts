@@ -24,7 +24,7 @@ export const digitTypeEnum = pgEnum('digit_type', [
   'Explicit',
   'Canonical',
   'JCanonical',
-  'Adjoined',
+  'Adjoint',
   'Symmetric',
   'JSymmetric',
   'Shifted',

@@ -128,7 +128,7 @@ pub(super) fn build_system(
         ));
       }
     },
-    DigitType::Adjoined => match get_adjoint(&base) {
+    DigitType::Adjoint => match get_adjoint(&base) {
       Ok(digits) => SystemDigitsEnum::Adjoint(digits),
       Err(err) => {
         return Err(WorkerError::InvalidInput(err.to_string()));

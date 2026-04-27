@@ -1,5 +1,5 @@
 import {
-  AdjoinedDigits,
+  AdjointDigits,
   CanonicalDigits,
   Digits,
   ExplicitDigits,
@@ -38,9 +38,9 @@ function convertDigits(system: SystemDbEntityWithDetails): Digits {
         jValue: system.digitParam!,
       };
       return jc;
-    case 'Adjoined':
-      const a: AdjoinedDigits = {
-        type: 'Adjoined',
+    case 'Adjoint':
+      const a: AdjointDigits = {
+        type: 'Adjoint',
       };
       return a;
     case 'Shifted':
@@ -94,7 +94,7 @@ function getDigitParam(digits: Digits): number | null {
       return digits.shift;
     case 'Explicit':
     case 'Canonical':
-    case 'Adjoined':
+    case 'Adjoint':
     case 'Symmetric':
       return null;
   }

@@ -20,7 +20,7 @@ export default function ProtectedLayout(props: { children: JSX.Element }) {
     <ErrorBoundary
       fallback={(error) => {
         return (
-          <div class="h-full w-full flex flex-col gap-2 items-center justify-center">
+          <div class="h-dvh w-full flex flex-col gap-2 items-center justify-center text-foreground">
             <p>Something went wrong, try reloading the page.</p>
             <p>{error}</p>
           </div>

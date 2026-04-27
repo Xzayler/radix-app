@@ -1,14 +1,9 @@
-import { createAsync } from '@solidjs/router';
-import { getCurrentUser } from '~/api/server';
-import Navbar from '~/components/shared/Navbar';
+import { Navigate } from '@solidjs/router';
 
 export default function Home() {
-  const user = createAsync(() => getCurrentUser());
-
   return (
     <>
-      <Navbar user={user() ?? null} />
-      <main class="max-w-dvw">"TODO: Home page description"</main>;
+      <Navigate href={'/systems'} />
     </>
   );
 }

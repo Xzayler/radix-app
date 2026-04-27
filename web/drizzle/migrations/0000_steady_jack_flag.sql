@@ -1,4 +1,4 @@
-CREATE TYPE "public"."digit_type" AS ENUM('Explicit', 'Canonical', 'JCanonical', 'Dense', 'Adjoined', 'Symmetric', 'JSymmetric', 'Shifted');--> statement-breakpoint
+CREATE TYPE "public"."digit_type" AS ENUM('Explicit', 'Canonical', 'JCanonical', 'Dense', 'Adjoint', 'Symmetric', 'JSymmetric', 'Shifted');--> statement-breakpoint
 CREATE TYPE "public"."job_type" AS ENUM('Walk', 'Decision', 'Classification');--> statement-breakpoint
 CREATE TYPE "public"."norm_type" AS ENUM('Infinite', 'L1', 'L2');--> statement-breakpoint
 CREATE TYPE "public"."status" AS ENUM('Pending', 'Running', 'Succeeded', 'Failed');--> statement-breakpoint
