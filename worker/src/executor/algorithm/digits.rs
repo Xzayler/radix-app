@@ -426,9 +426,26 @@ mod tests {
     match shifted {
       Ok(_res) => panic!(),
       Err(err) => {
-      assert!(matches!(err, DigitsError::InvalidShift { .. }));
+        assert!(matches!(err, DigitsError::InvalidShift { .. }));
       }
     };
+  }
+
+  #[test]
+  fn shifted_digits_test() {
+    let base = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
+    let shifted = get_shifted_canonical(&base, 0, 2).expect("shifted");
+    let digits = shifted.get_digits_vec();
+    let expected = vec![
+      DVector::from_vec(vec![-2.0, 0.0]),
+      DVector::from_vec(vec![-1.0, 0.0]),
+      DVector::from_vec(vec![0.0, 0.0]),
+      DVector::from_vec(vec![1.0, 0.0]),
+      DVector::from_vec(vec![2.0, 0.0])
+    ];
+    println!("{:?}", digits);
+    assert_eq!(digits.len(), expected.len());
+    assert!(expected.iter().all(|expected_digit| digits.contains(expected_digit)));
   }
 
   #[test]
@@ -443,6 +460,78 @@ mod tests {
       DVector::from_vec(vec![-1.0, 0.0]),
       DVector::from_vec(vec![0.0, -1.0])
     ];
+    assert_eq!(digits.len(), expected.len());
+    assert!(expected.iter().all(|expected_digit| digits.contains(expected_digit)));
+  }
+
+  #[test]
+  fn adjoint_digits_test_2() {
+    let base = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
+    let adj = get_adjoint(&base).expect("adjoint");
+    let digits = adj.get_digits_vec();
+    let expected: Vec<DVector<f64>> = vec![
+      DVector::from_row_slice(&[0.0, 0.0]),
+      DVector::from_row_slice(&[0.0, 1.0]),
+      DVector::from_row_slice(&[1.0, 0.0]),
+      DVector::from_row_slice(&[-1.0, 0.0]),
+      DVector::from_row_slice(&[0.0, -1.0]),
+    ];
+    assert_eq!(digits.len(), expected.len());
+    assert!(expected.iter().all(|expected_digit| digits.contains(expected_digit)));
+  }
+
+  #[test]
+  fn adjoint_digits_test_3() {
+    let base = DMatrix::from_row_slice(2, 2, &[3.0, -1.0, 1.0, 3.0]);
+    let adj = get_adjoint(&base).expect("adjoint");
+    let digits = adj.get_digits_vec();
+    let expected: Vec<DVector<f64>> = vec![
+      DVector::from_row_slice(&[0.0, 0.0]),
+      DVector::from_row_slice(&[0.0, 1.0]),
+      DVector::from_row_slice(&[1.0, -1.0]),
+      DVector::from_row_slice(&[1.0, 0.0]),
+      DVector::from_row_slice(&[1.0, 1.0]),
+      DVector::from_row_slice(&[1.0, 2.0]),
+      DVector::from_row_slice(&[-1.0, -1.0]),
+      DVector::from_row_slice(&[-1.0, 0.0]),
+      DVector::from_row_slice(&[-1.0, 1.0]),
+      DVector::from_row_slice(&[0.0, -1.0]),
+    ];
+    assert_eq!(digits.len(), expected.len());
+    assert!(expected.iter().all(|expected_digit| digits.contains(expected_digit)));
+  }
+
+  #[test]
+  fn canonical_digits_test_2() {
+    let base = DMatrix::from_row_slice(2, 2, &[0.0, -2.0, 1.0, -2.0]);
+    let can = get_canonical(&base).expect("canonical");
+    let digits = can.get_digits_vec();
+    let expected: Vec<DVector<f64>> = vec![
+      DVector::from_row_slice(&[0.0, 0.0]),
+      DVector::from_row_slice(&[1.0, 0.0]),
+    ];
+    assert_eq!(digits.len(), expected.len());
+    assert!(expected.iter().all(|expected_digit| digits.contains(expected_digit)));
+  }
+
+  #[test]
+  fn canonical_digits_test_3() {
+    let base = DMatrix::from_row_slice(5, 5, &[
+      0.0, 0.0, 0.0, 0.0, -7.0,
+      1.0, 0.0, 0.0, 0.0,  6.0,
+      0.0, 1.0, 0.0, 0.0,  0.0,
+      0.0, 0.0, 1.0, 0.0,  0.0,
+      0.0, 0.0, 0.0, 1.0,  0.0,
+    ]);
+    let can = get_canonical(&base).expect("canonical");
+    let digits = can.get_digits_vec();
+    let expected: Vec<DVector<f64>> = (0..7)
+      .map(|i| {
+        let mut v = vec![0.0; 5];
+        v[0] = i as f64;
+        DVector::from_row_slice(&v)
+      })
+      .collect();
     assert_eq!(digits.len(), expected.len());
     assert!(expected.iter().all(|expected_digit| digits.contains(expected_digit)));
   }

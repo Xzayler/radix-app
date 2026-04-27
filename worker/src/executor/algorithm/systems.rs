@@ -187,61 +187,192 @@ impl System for GenericSystem {
   }
 }
 
+#[cfg(test)]
 mod tests {
-  use crate::executor::algorithm::digits::get_explicit;
+  use crate::executor::algorithm::digits::{get_adjoint, get_canonical, get_explicit, get_symmetric};
 
   use super::*;
 
+  fn build_explicit_system(
+    dim: usize,
+    base_vals: &[f64],
+    digit_vecs: Vec<Vec<f64>>,
+  ) -> Result<SystemEnum, WorkerError> {
+    let base = DMatrix::from_row_slice(dim, dim, base_vals);
+    let d: Vec<DVector<f64>> = digit_vecs
+      .into_iter()
+      .map(|v| DVector::from_row_slice(&v))
+      .collect();
+    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("digits"));
+    Ok(SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?))
+  }
+
   #[test]
-  fn generic_system_phi_test() -> Result<(), WorkerError> {
-    let base: DMatrix<f64> = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
-    let d: Vec<DVector<f64>> = vec![
-      DVector::from_row_slice(&[0.0, 0.0]),
-      DVector::from_row_slice(&[1.0, 0.0]),
-      DVector::from_row_slice(&[0.0, 1.0]),
-      DVector::from_row_slice(&[0.0, -1.0]),
-      DVector::from_row_slice(&[-6.0, 5.0]),
-    ];
-    let starts = vec![
-      DVector::from_row_slice(&[-6.0, 5.0]),
-      DVector::from_row_slice(&[-6.0, 4.0]),
-      DVector::from_row_slice(&[-6.0, 3.0]),
-    ];
-    let expected = vec![
-      DVector::from_row_slice(&[0.0, 0.0]),
-      DVector::from_row_slice(&[-2.0, 3.0]),
-      DVector::from_row_slice(&[-2.0, 2.0]),
-    ];
-    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect(""));
-    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
-
-    for i in 0..3 {
-      let res = system.phi(&starts[i])?;
-      assert_eq!(res, expected[i]);
-      println!("{} asserted.", i);
-    }
-
+  fn generic_system_phi_test_1() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      2,
+      &[2.0, -1.0, 1.0, 2.0],
+      vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![0.0, 1.0], vec![0.0, -1.0], vec![-6.0, 5.0]],
+    )?;
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[-6.0, 5.0]))?,
+      DVector::from_row_slice(&[0.0, 0.0])
+    );
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[-6.0, 4.0]))?,
+      DVector::from_row_slice(&[-2.0, 3.0])
+    );
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[-6.0, 3.0]))?,
+      DVector::from_row_slice(&[-2.0, 2.0])
+    );
     Ok(())
   }
 
   #[test]
-  fn cover_box_test() -> Result<(), WorkerError> {
-    let base: DMatrix<f64> = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
-    let d: Vec<DVector<f64>> = vec![
-      DVector::from_row_slice(&[0.0, 0.0]),
-      DVector::from_row_slice(&[1.0, 0.0]),
-      DVector::from_row_slice(&[0.0, 1.0]),
-      DVector::from_row_slice(&[0.0, -1.0]),
-      DVector::from_row_slice(&[-6.0, 5.0]),
-    ];
-    let digits_enum = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect(""));
-    let system =
-      SystemEnum::Generic(GenericSystem::new(base, digits_enum, NormEnum::Infinite)?);
-    let expected_box: (Vec<i32>, Vec<i32>) = (vec![-2, -6], vec![2, 1]);
-    let cover_box = system.get_cover_box()?;
-    println!("Box: {:?}", cover_box);
-    assert_eq!(expected_box, cover_box);
+  fn generic_system_phi_test_2() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      1,
+      &[3.0],
+      vec![vec![-2.0], vec![0.0], vec![2.0]],
+    )?;
+    assert_eq!(system.phi(&DVector::from_row_slice(&[1.0]))?, DVector::from_row_slice(&[1.0]));
+    assert_eq!(system.phi(&DVector::from_row_slice(&[0.0]))?, DVector::from_row_slice(&[0.0]));
+    Ok(())
+  }
 
+  #[test]
+  fn generic_system_phi_test_3() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      2,
+      &[1.0, -2.0, 1.0, 1.0],
+      vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![-1.0, 0.0]],
+    )?;
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[3.0, 2.0]))?,
+      DVector::from_row_slice(&[2.0, 0.0])
+    );
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[1.0, 3.0]))?,
+      DVector::from_row_slice(&[2.0, 1.0])
+    );
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[4.0, 3.0]))?,
+      DVector::from_row_slice(&[3.0, 0.0])
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn generic_system_phi_test_4() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      2,
+      &[-1.0, -1.0, 1.0, -1.0],
+      vec![vec![0.0, 0.0], vec![1.0, 0.0]],
+    )?;
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[3.0, 2.0]))?,
+      DVector::from_row_slice(&[0.0, -2.0])
+    );
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[1.0, 3.0]))?,
+      DVector::from_row_slice(&[1.0, -2.0])
+    );
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[4.0, 3.0]))?,
+      DVector::from_row_slice(&[0.0, -3.0])
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn generic_system_phi_test_canonical() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(2, 2, &[0.0, -2.0, 1.0, -2.0]);
+    let digits = SystemDigitsEnum::Canonical(get_canonical(&base).expect("canonical"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    let zero = DVector::from_row_slice(&[0.0, 0.0]);
+    assert_eq!(system.phi(&DVector::from_row_slice(&[0.0, 0.0]))?, zero);
+    assert_eq!(system.phi(&DVector::from_row_slice(&[1.0, 0.0]))?, zero);
+    Ok(())
+  }
+
+  #[test]
+  fn generic_system_phi_test_cycle() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(2, 2, &[0.0, 2.0, 1.0, 0.0]);
+    let digits = SystemDigitsEnum::Canonical(get_canonical(&base).expect("canonical"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[-1.0, -1.0]))?,
+      DVector::from_row_slice(&[-1.0, -1.0])
+    );
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[-1.0, 0.0]))?,
+      DVector::from_row_slice(&[0.0, -1.0])
+    );
+    Ok(())
+  }
+
+   #[test]
+  fn cover_box_1() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      2,
+      &[2.0, -1.0, 1.0, 2.0],
+      vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![0.0, 1.0], vec![0.0, -1.0], vec![-6.0, 5.0]],
+    )?;
+    assert_eq!(system.get_cover_box()?, (vec![-2, -6], vec![2, 1]));
+    Ok(())
+  }
+
+  #[test]
+  fn cover_box_2() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      1,
+      &[3.0],
+      vec![vec![-2.0], vec![0.0], vec![2.0]],
+    )?;
+    assert_eq!(system.get_cover_box()?, (vec![-1], vec![1]));
+    Ok(())
+  }
+
+  #[test]
+  fn cover_box_3() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      2,
+      &[1.0, -2.0, 1.0, 1.0],
+      vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![-1.0, 0.0]],
+    )?;
+    assert_eq!(system.get_cover_box()?, (vec![-1, -1], vec![1, 1]));
+    Ok(())
+  }
+
+  #[test]
+  fn cover_box_4() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      2,
+      &[-1.0, -1.0, 1.0, -1.0],
+      vec![vec![0.0, 0.0], vec![1.0, 0.0]],
+    )?;
+    assert_eq!(system.get_cover_box()?, (vec![-1, -1], vec![1, 1]));
+    Ok(())
+  }
+
+  #[test]
+  fn generic_system_phi_test_symmetric() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(2, 2, &[1.0, -2.0, 1.0, 1.0]);
+    let digits = SystemDigitsEnum::Symmetric(get_symmetric(&base).expect("symmetric"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[3.0, 2.0]))?,
+      DVector::from_row_slice(&[2.0, 0.0])
+    );
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[1.0, 3.0]))?,
+      DVector::from_row_slice(&[2.0, 1.0])
+    );
+    assert_eq!(
+      system.phi(&DVector::from_row_slice(&[4.0, 3.0]))?,
+      DVector::from_row_slice(&[3.0, 0.0])
+    );
     Ok(())
   }
 }

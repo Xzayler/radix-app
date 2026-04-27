@@ -197,7 +197,7 @@ pub fn walk(
 #[cfg(test)]
 mod tests {
   use crate::executor::algorithm::{
-    digits::{SystemDigitsEnum, get_explicit, get_symmetric},
+    digits::{SystemDigitsEnum, get_adjoint, get_canonical, get_explicit, get_symmetric},
     norms::NormEnum,
     systems::GenericSystem,
     systems_factories::{BuilderContext, GenericFactory, SystemFactory},
@@ -206,99 +206,92 @@ mod tests {
   use super::*;
   use nalgebra::DMatrix;
 
-  #[test]
-  fn floyd_test() -> Result<(), WorkerError> {
-    let base: DMatrix<f64> = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
-    let d: Vec<DVector<f64>> = vec![
-      DVector::from_row_slice(&[0.0, 0.0]),
-      DVector::from_row_slice(&[1.0, 0.0]),
-      DVector::from_row_slice(&[0.0, 1.0]),
-      DVector::from_row_slice(&[0.0, -1.0]),
-      DVector::from_row_slice(&[-6.0, 5.0]),
-    ];
-    let digits =
-      SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
-    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
 
+  fn build_explicit_system(
+    dim: usize,
+    base_vals: &[f64],
+    digit_vecs: Vec<Vec<f64>>,
+  ) -> SystemEnum {
+    let base = DMatrix::from_row_slice(dim, dim, base_vals);
+    let d: Vec<DVector<f64>> = digit_vecs
+      .into_iter()
+      .map(|v| DVector::from_row_slice(&v))
+      .collect();
+    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("digits"));
+    SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite).expect("system"))
+  }
+
+  fn dvec(vals: &[f64]) -> DVector<f64> {
+    DVector::from_row_slice(vals)
+  }
+
+  #[test]
+  fn floyd_test() {
+    let system = build_explicit_system(
+      2,
+      &[2.0, -1.0, 1.0, 2.0],
+      vec![
+        vec![0.0, 0.0],
+        vec![1.0, 0.0],
+        vec![0.0, 1.0],
+        vec![0.0, -1.0],
+        vec![-6.0, 5.0],
+      ]
+    );
     let start: DVector<f64> = DVector::from_column_slice(&[-6.0, 3.0]);
     let expected = vec![DVector::from_column_slice(&[0.0, 0.0])];
-    let res = get_loop_floyd(&system, &start)?;
+    let res = get_loop_floyd(&system, &start).expect("loops");
     assert_eq!(expected, res);
-
-    Ok(())
   }
 
   #[test]
-  fn walk_test() -> Result<(), WorkerError> {
-    let base: DMatrix<f64> = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
-    let d: Vec<DVector<f64>> = vec![
-      DVector::from_row_slice(&[0.0, 0.0]),
-      DVector::from_row_slice(&[1.0, 0.0]),
-      DVector::from_row_slice(&[0.0, 1.0]),
-      DVector::from_row_slice(&[0.0, -1.0]),
-      DVector::from_row_slice(&[-6.0, 5.0]),
-    ];
-    let digits =
-      SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
-    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
-
-    let start: DVector<f64> = DVector::from_column_slice(&[-6.0, 3.0]);
-    let expected = vec![
-      DVector::from_column_slice(&[-6.0, 3.0]),
-      DVector::from_column_slice(&[-2.0, 2.0]),
-      DVector::from_column_slice(&[1.0, -2.0]),
-      DVector::from_column_slice(&[0.0, -1.0]),
-      DVector::from_column_slice(&[0.0, 0.0]),
-      DVector::from_column_slice(&[0.0, 0.0]),
-    ];
-    let res = walk(&system, start)?;
-    assert_eq!(expected, res);
-
-    Ok(())
-  }
-
-  #[test]
-  fn decision_test() -> Result<(), WorkerError> {
-    let base: DMatrix<f64> = DMatrix::from_row_slice(
-      4,
-      4,
-      &[
-        0.0, -2.0, 0.0, 0.0, 2.0, -2.0, 0.0, 0.0, 0.0, 0.0, 1.0, -2.0, 0.0, 0.0, 2.0, -1.0,
-      ],
+  fn walk_test() {
+    let system = build_explicit_system(
+      2,
+      &[2.0, -1.0, 1.0, 2.0],
+      vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![0.0, 1.0], vec![0.0, -1.0], vec![-6.0, 5.0]],
     );
-    let digits: Vec<DVector<f64>> = vec![
-      DVector::from_row_slice(&[0.0, 0.0, 0.0, 0.0]),
-      DVector::from_row_slice(&[1.0, 0.0, 1.0, 0.0]),
-      DVector::from_row_slice(&[0.0, 2.0, 0.0, 2.0]),
-      DVector::from_row_slice(&[1.0, 1.0, 1.0, 1.0]),
-      DVector::from_row_slice(&[-1.0, 0.0, -1.0, 0.0]),
-      DVector::from_row_slice(&[-2.0, 0.0, -2.0, 0.0]),
-      DVector::from_row_slice(&[-1.0, -1.0, -1.0, -1.0]),
-      DVector::from_row_slice(&[-2.0, -1.0, -2.0, -1.0]),
-      DVector::from_row_slice(&[2.0, -1.0, 2.0, -1.0]),
-      DVector::from_row_slice(&[-2.0, 1.0, -2.0, 1.0]),
-      DVector::from_row_slice(&[-1.0, -2.0, -1.0, -2.0]),
-      DVector::from_row_slice(&[-3.0, -3.0, -3.0, -3.0]),
+    let res = walk(&system, dvec(&[-6.0, 3.0])).expect("path");
+    let expected = vec![
+      dvec(&[-6.0, 3.0]),
+      dvec(&[-2.0, 2.0]),
+      dvec(&[1.0, -2.0]),
+      dvec(&[0.0, -1.0]),
+      dvec(&[0.0, 0.0]),
+      dvec(&[0.0, 0.0]),
     ];
+    assert_eq!(res, expected);
+  }
 
-    let digits =
-      SystemDigitsEnum::Explicit(get_explicit(&base, digits).expect("digits should be fine"));
-    let builder_ctx = BuilderContext {
-      base: base,
-      digits,
-      norm: NormEnum::Infinite,
-    };
-    let system = GenericFactory.create(builder_ctx)?;
+  #[test]
+  fn decision_test() {
+    let system = build_explicit_system(
+      4,
+      &[0.0, -2.0, 0.0, 0.0, 2.0, -2.0, 0.0, 0.0, 0.0, 0.0, 1.0, -2.0, 0.0, 0.0, 2.0, -1.0],
+      vec![
+        vec![0.0, 0.0, 0.0, 0.0],
+        vec![1.0, 0.0, 1.0, 0.0],
+        vec![0.0, 2.0, 0.0, 2.0],
+        vec![1.0, 1.0, 1.0, 1.0],
+        vec![-1.0, 0.0, -1.0, 0.0],
+        vec![-2.0, 0.0, -2.0, 0.0],
+        vec![-1.0, -1.0, -1.0, -1.0],
+        vec![-2.0, -1.0, -2.0, -1.0],
+        vec![2.0, -1.0, 2.0, -1.0],
+        vec![-2.0, 1.0, -2.0, 1.0],
+        vec![-1.0, -2.0, -1.0, -2.0],
+        vec![-3.0, -3.0, -3.0, -3.0],
+      ]
+    );
     let res = match decision(&system) {
       Ok(b) => b,
       Err(_err) => panic!("error in decision"),
     };
     assert!(res);
-    Ok(())
   }
 
   #[test]
-  fn decision_decimal_test() -> Result<(), WorkerError> {
+  fn decision_decimal_test() {
     let base: DMatrix<f64> = DMatrix::from_row_slice(1, 1, &[10.0]);
 
     let digits = SystemDigitsEnum::Symmetric(get_symmetric(&base).expect("msg"));
@@ -307,12 +300,259 @@ mod tests {
       digits,
       norm: NormEnum::Infinite,
     };
-    let system = GenericFactory.create(builder_ctx)?;
+    let system = GenericFactory.create(builder_ctx).expect("system");
     let res = match decision(&system) {
       Ok(b) => b,
       Err(_err) => panic!("error in decision"),
     };
     assert!(res);
+  }
+
+  #[test]
+  fn walk_test_2() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      2,
+      &[1.0, -2.0, 1.0, 1.0],
+      vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![-1.0, 0.0]],
+    );
+    let res = walk(&system, dvec(&[3.0, 1.0]))?;
+    let expected = vec![
+      dvec(&[3.0, 1.0]),
+      dvec(&[2.0, -1.0]),
+      dvec(&[0.0, -1.0]),
+      dvec(&[-1.0, 0.0]),
+      dvec(&[0.0, 0.0]),
+      dvec(&[0.0, 0.0]),
+    ];
+    assert_eq!(res, expected);
+    Ok(())
+  }
+
+  #[test]
+  fn walk_test_3() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      2,
+      &[-1.0, -1.0, 1.0, -1.0],
+      vec![vec![0.0, 0.0], vec![1.0, 0.0]],
+    );
+    let res = walk(&system, dvec(&[3.0, 1.0]))?;
+    let expected = vec![
+      dvec(&[3.0, 1.0]),
+      dvec(&[-1.0, -2.0]),
+      dvec(&[0.0, 2.0]),
+      dvec(&[1.0, -1.0]),
+      dvec(&[-1.0, 0.0]),
+      dvec(&[1.0, 1.0]),
+      dvec(&[0.0, -1.0]),
+      dvec(&[0.0, 1.0]),
+      dvec(&[1.0, 0.0]),
+      dvec(&[0.0, 0.0]),
+      dvec(&[0.0, 0.0]),
+    ];
+    assert_eq!(res, expected);
+    Ok(())
+  }
+
+  #[test]
+  fn walk_test_4() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(2, 2, &[0.0, -2.0, 1.0, -2.0]);
+    let digits = SystemDigitsEnum::Canonical(get_canonical(&base).expect("canonical"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    let res = walk(&system, dvec(&[2.0, 1.0]))?;
+    let expected = vec![
+      dvec(&[2.0, 1.0]),
+      dvec(&[-1.0, -1.0]),
+      dvec(&[1.0, 1.0]),
+      dvec(&[1.0, 0.0]),
+      dvec(&[0.0, 0.0]),
+      dvec(&[0.0, 0.0]),
+    ];
+    assert_eq!(res, expected);
+    Ok(())
+  }
+
+  #[test]
+  fn walk_test_5() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(2, 2, &[0.0, 2.0, 1.0, 0.0]);
+    let digits = SystemDigitsEnum::Canonical(get_canonical(&base).expect("canonical"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    let res = walk(&system, dvec(&[-1.0, 0.0]))?;
+    let expected = vec![
+      dvec(&[-1.0, 0.0]),
+      dvec(&[0.0, -1.0]),
+      dvec(&[-1.0, 0.0]),
+    ];
+    assert_eq!(res, expected);
+    Ok(())
+  }
+
+  #[test]
+  fn walk_test_6() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      1,
+      &[3.0],
+      vec![vec![-2.0], vec![0.0], vec![2.0]],
+    );
+    let res = walk(&system, dvec(&[3.0]))?;
+    assert_eq!(res, vec![dvec(&[3.0]), dvec(&[1.0]), dvec(&[1.0])]);
+
+    let res2 = walk(&system, dvec(&[7.0]))?;
+    assert_eq!(res2, vec![dvec(&[7.0]), dvec(&[3.0]), dvec(&[1.0]), dvec(&[1.0])]);
+    Ok(())
+  }
+
+  #[test]
+  fn walk_test_7() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(5, 5, &[
+      0.0, 0.0, 0.0, 0.0, -7.0,
+      1.0, 0.0, 0.0, 0.0,  6.0,
+      0.0, 1.0, 0.0, 0.0,  0.0,
+      0.0, 0.0, 1.0, 0.0,  0.0,
+      0.0, 0.0, 0.0, 1.0,  0.0,
+    ]);
+    let digits = SystemDigitsEnum::Canonical(get_canonical(&base).expect("canonical"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    let res = walk(&system, dvec(&[0.0, 1.0, 2.0, 3.0, 4.0]))?;
+    let expected = vec![
+      dvec(&[0.0, 1.0, 2.0, 3.0, 4.0]),
+      dvec(&[1.0, 2.0, 3.0, 4.0, 0.0]),
+      dvec(&[2.0, 3.0, 4.0, 0.0, 0.0]),
+      dvec(&[3.0, 4.0, 0.0, 0.0, 0.0]),
+      dvec(&[4.0, 0.0, 0.0, 0.0, 0.0]),
+      dvec(&[0.0, 0.0, 0.0, 0.0, 0.0]),
+      dvec(&[0.0, 0.0, 0.0, 0.0, 0.0]),
+    ];
+    assert_eq!(res, expected);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_test_2() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(2, 2, &[-3.0, 1.0, 1.0, -2.0]);
+    let digits = SystemDigitsEnum::Canonical(get_canonical(&base).expect("canonical"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    assert!(decision(&system)?);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_test_3() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(2, 2, &[0.0, 2.0, 1.0, 0.0]);
+    let digits = SystemDigitsEnum::Canonical(get_canonical(&base).expect("canonical"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    assert!(!decision(&system)?);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_test_4() -> Result<(), WorkerError> {
+    let system = build_explicit_system(1, &[3.0], vec![vec![0.0], vec![7.0], vec![2.0]]);
+    assert!(!decision(&system)?);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_test_5() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
+    let digits = SystemDigitsEnum::Adjoint(get_adjoint(&base).expect("adjoint"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    assert!(decision(&system)?);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_test_6() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(2, 2, &[3.0, -1.0, 1.0, 3.0]);
+    let digits = SystemDigitsEnum::Adjoint(get_adjoint(&base).expect("adjoint"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
+    assert!(decision(&system)?);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_test_7() -> Result<(), WorkerError> {
+    let system = build_explicit_system(4,
+      &[
+        0.0, -2.0, 0.0, 0.0,
+        2.0, -2.0, 0.0, 0.0,
+        0.0,  0.0, 1.0, -2.0,
+        0.0,  0.0, 2.0, -1.0,
+      ],
+      vec![
+        vec![0.0, 0.0, 0.0, 0.0], vec![1.0, 0.0, 1.0, 0.0],
+        vec![0.0, 2.0, 0.0, 2.0], vec![1.0, 1.0, 1.0, 1.0],
+        vec![-1.0, 0.0, -1.0, 0.0], vec![-2.0, 0.0, -2.0, 0.0],
+        vec![-1.0, -1.0, -1.0, -1.0], vec![-2.0, -1.0, -2.0, -1.0],
+        vec![2.0, -1.0, 2.0, -1.0], vec![-2.0, 1.0, -2.0, 1.0],
+        vec![-1.0, -2.0, -1.0, -2.0], vec![-3.0, -3.0, -3.0, -3.0],
+      ]
+    );
+    assert!(decision(&system)?);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_test_8() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      4,
+      &[
+        1.0, -2.0, 0.0, 0.0,
+        2.0, -1.0, 0.0, 0.0,
+        0.0,  0.0, 2.0, -2.0,
+        0.0,  0.0, 2.0,  0.0,
+      ],
+      vec![
+        vec![0.0, 0.0, 0.0, 0.0], vec![1.0, 0.0, 1.0, 0.0],
+        vec![0.0, 2.0, 0.0, 2.0], vec![1.0, 1.0, 1.0, 1.0],
+        vec![-1.0, 0.0, -1.0, 0.0], vec![1.0, -1.0, 1.0, -1.0],
+        vec![0.0, -1.0, 0.0, -1.0], vec![-2.0, 0.0, -2.0, 0.0],
+        vec![-1.0, -1.0, -1.0, -1.0], vec![2.0, -1.0, 2.0, -1.0],
+        vec![-1.0, -2.0, -1.0, -2.0], vec![0.0, -3.0, 0.0, -3.0],
+      ]
+    );
+    assert!(decision(&system)?);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_test_9() -> Result<(), WorkerError> {
+    let system = build_explicit_system(
+      4,
+      &[
+        -2.0,  1.0, 0.0, 0.0,
+        -1.0, -1.0, 0.0, 0.0,
+        0.0,  0.0, -2.0, 0.0,
+        0.0,  0.0,  0.0, -2.0,
+      ],
+      vec![
+        vec![0.0, 0.0, 0.0, 0.0], vec![1.0, 0.0, 1.0, 0.0],
+        vec![0.0, 2.0, 0.0, 2.0], vec![0.0, 1.0, 0.0, 1.0],
+        vec![-2.0, 1.0, -2.0, 1.0], vec![1.0, -2.0, 1.0, -2.0],
+        vec![-3.0, -1.0, -3.0, -1.0], vec![-2.0, 0.0, -2.0, 0.0],
+        vec![-1.0, -1.0, -1.0, -1.0], vec![-2.0, -1.0, -2.0, -1.0],
+        vec![-1.0, -2.0, -1.0, -2.0], vec![-3.0, -3.0, -3.0, -3.0],
+      ]
+    );
+    assert!(decision(&system)?);
+    Ok(())
+  }
+
+  #[test]
+  fn decision_4d_symmetric_is_gns() -> Result<(), WorkerError> {
+    let base = DMatrix::from_row_slice(4, 4, &[
+      0.0, 0.0, 0.0, -15.0,
+      1.0, 0.0, 0.0,  -1.0,
+      0.0, 1.0, 0.0,  -2.0,
+      0.0, 0.0, 1.0,  -3.0,
+    ]);
+    let digits = SystemDigitsEnum::Symmetric(get_symmetric(&base).expect("symmetric"));
+    let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::L1)?);
+    match decision(&system) {
+      Ok(_) => panic!(),
+      Err(err) => {
+        assert!(matches!(err, WorkerError::InvalidNorm { .. }));
+      }
+    };
     Ok(())
   }
 }
