@@ -1,25 +1,23 @@
-mod executor;
-mod supervisor;
 mod db;
-mod minio;
 mod error;
+mod executor;
+mod minio;
+mod supervisor;
 use std::{error::Error, process};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
   let args: Vec<String> = std::env::args().collect();
-  
+
   match args.get(1).map(String::as_str) {
     Some("worker") => {
       println!("Attempting to start worker");
       let id = match args.get(2) {
-        Some(res) => {
-          match res.parse::<i32>() {
-            Ok(parsed) => parsed,
-            Err(_) => {
-              println!("Can't parse job id for worker");
-              process::exit(1);
-            }
+        Some(res) => match res.parse::<i32>() {
+          Ok(parsed) => parsed,
+          Err(_) => {
+            println!("Can't parse job id for worker");
+            process::exit(1);
           }
         },
         None => {
@@ -28,7 +26,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
       };
       executor::run(id).await;
-    
+
       process::exit(0);
     }
     _ => {
@@ -49,6 +47,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
       }
     }
   };
-  
+
   Ok(())
 }

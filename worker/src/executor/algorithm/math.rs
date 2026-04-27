@@ -1,4 +1,10 @@
-use crate::{executor::algorithm::{digits::{SystemDigits, SystemDigitsEnum}, norms::{Norm, NormEnum}}, error::WorkerError};
+use crate::{
+  error::WorkerError,
+  executor::algorithm::{
+    digits::{SystemDigits, SystemDigitsEnum},
+    norms::{Norm, NormEnum},
+  },
+};
 use rayon::prelude::*;
 use std::collections::HashMap;
 
@@ -35,7 +41,7 @@ fn get_smith_values(m: &DMatrix<f64>) -> (DMatrix<f64>, DMatrix<f64>) {
       .map(|i| i.into())
       .collect::<Vec<f64>>()),
   );
-  return (um, gm);
+  (um, gm)
 }
 
 pub fn get_smith_data(m: &DMatrix<f64>) -> (DMatrix<f64>, Vec<i64>) {
@@ -47,7 +53,14 @@ pub fn get_smith_data(m: &DMatrix<f64>) -> (DMatrix<f64>, Vec<i64>) {
   (u, diagonal)
 }
 
-pub fn hash_point(dim: usize, s: usize, u: &DMatrix<f64>, g: &Vec<i64>, g_prods: &Vec<i64>, point: &DVector<f64>) -> i64 {
+pub fn hash_point(
+  dim: usize,
+  s: usize,
+  u: &DMatrix<f64>,
+  g: &Vec<i64>,
+  g_prods: &Vec<i64>,
+  point: &DVector<f64>,
+) -> i64 {
   let uz = u * point;
 
   let mut h = 0;
@@ -62,7 +75,7 @@ pub fn hash_point(dim: usize, s: usize, u: &DMatrix<f64>, g: &Vec<i64>, g_prods:
   h
 }
 
-pub fn build_h_i<'a>(
+pub fn build_h_i(
   dim: usize,
   s: usize,
   u: &DMatrix<f64>,
@@ -77,14 +90,6 @@ pub fn build_h_i<'a>(
     .collect()
 }
 
-// pub fn get_vector_norm(v: &DVector<f64>, norm: &Norms) -> f64 {
-//   match norm {
-//     Norms::Infinite => v.apply_norm(&UniformNorm),
-//     Norms::L1 => v.apply_norm(&LpNorm(1)),
-//     Norms::L2 => v.apply_norm(&EuclideanNorm)
-//   }
-// }
-
 pub fn spectral_norm(m: &DMatrix<f64>) -> f64 {
   let prod = m.transpose() * m;
   let svd = prod.svd(false, false);
@@ -96,7 +101,10 @@ pub fn find_c_gamma(m_inv: &DMatrix<f64>, norm: &NormEnum) -> Result<(usize, f64
   let mut c: usize = 1;
   let inv_norm = norm.get_matrix_norm(&m_inv);
   if inv_norm >= 1.0 {
-    return Err(WorkerError::InvalidNorm {norm: norm.to_string(), message: "Base inverse not contractive".to_string()});
+    return Err(WorkerError::InvalidNorm {
+      norm: norm.to_string(),
+      message: "Base inverse not contractive".to_string(),
+    });
   }
 
   let mut m_pow = m_inv.clone();

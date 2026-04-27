@@ -1,9 +1,13 @@
 use std::sync::{Arc, Mutex};
 
+use crate::{
+  error::WorkerError,
+  executor::algorithm::{
+    math::satisfies_unit_condition,
+    systems::{System, SystemEnum},
+  },
+};
 use nalgebra::DVector;
-use std::time::SystemTime;
-
-use crate::{executor::algorithm::{lib::satisfies_unit_condition, systems::{System, SystemEnum}}, error::WorkerError};
 
 use rayon::prelude::*;
 
@@ -14,7 +18,7 @@ fn loop_contains_point(loop_points: &[DVector<f64>], point: &DVector<f64>) -> bo
 fn get_all_loops(
   l_corner: &Vec<i32>,
   h_corner: &Vec<i32>,
-  system: &SystemEnum
+  system: &SystemEnum,
 ) -> Result<Vec<Vec<DVector<f64>>>, WorkerError> {
   assert_eq!(l_corner.len(), h_corner.len());
 
@@ -28,43 +32,42 @@ fn get_all_loops(
   let all_loops: Arc<Mutex<Vec<Vec<DVector<f64>>>>> = Arc::new(Mutex::new(Vec::new()));
   let errors: Arc<Mutex<Vec<WorkerError>>> = Arc::new(Mutex::new(Vec::new()));
 
-  (0..total)
-    .into_par_iter()
-    .for_each(|mut idx| {
-      let mut point = vec![0f64; dims];
+  (0..total).into_par_iter().for_each(|mut idx| {
+    let mut point = vec![0f64; dims];
 
-      for d in (0..dims).rev() {
-        let size = sizes[d];
-        point[d] = (l_corner[d] as f64) + (idx % size) as f64;
-        idx /= size;
-      }
+    for d in (0..dims).rev() {
+      let size = sizes[d];
+      point[d] = (l_corner[d] as f64) + (idx % size) as f64;
+      idx /= size;
+    }
 
-      let grid_point = DVector::from_column_slice(&point);
+    let grid_point = DVector::from_column_slice(&point);
 
-      match get_loop_floyd(system, &grid_point) {
-        Ok(loop_points) => {
-          let Some(loop_point) = loop_points.first() else {
-            return;
-          };
+    match get_loop_floyd(system, &grid_point) {
+      Ok(loop_points) => {
+        let Some(loop_point) = loop_points.first() else {
+          return;
+        };
 
-          let mut stored_loops = all_loops
-            .lock()
-            .expect("all_loops mutex should not be poisoned");
+        let mut stored_loops = all_loops
+          .lock()
+          .expect("all_loops mutex should not be poisoned");
 
-          let already_discovered = stored_loops
-            .iter()
-            .any(|stored_loop| loop_contains_point(stored_loop, loop_point));
+        let already_discovered = stored_loops
+          .iter()
+          .any(|stored_loop| loop_contains_point(stored_loop, loop_point));
 
-          if !already_discovered {
-            stored_loops.push(loop_points);
-          }
-        }
-        Err(err) => {
-          let mut collected_errors = errors.lock().expect("errors mutex should not be poisoned");
-          collected_errors.push(err);
+        if !already_discovered {
+          stored_loops.push(loop_points);
         }
       }
-    });
+      Err(err) => {
+        let mut collected_errors =
+          errors.lock().expect("errors mutex should not be poisoned");
+        collected_errors.push(err);
+      }
+    }
+  });
 
   if let Some(err) = errors
     .lock()
@@ -74,29 +77,20 @@ fn get_all_loops(
     return Err(err);
   }
 
-  Ok(
-    Arc::try_unwrap(all_loops)
-      .expect("all_loops should have a single owner after rayon completes")
-      .into_inner()
-      .expect("all_loops mutex should not be poisoned"),
-  )
+  Ok(Arc::try_unwrap(all_loops)
+    .expect("all_loops should have a single owner after rayon completes")
+    .into_inner()
+    .expect("all_loops mutex should not be poisoned"))
 }
 
-pub fn classification(
-  system: &SystemEnum,
-) -> Result<Vec<Vec<DVector<f64>>>, WorkerError> {
-  let start = SystemTime::now();
+pub fn classification(system: &SystemEnum) -> Result<Vec<Vec<DVector<f64>>>, WorkerError> {
   let (l_corner, h_corner) = system.get_cover_box()?;
   println!("Box: {:?}, {:?}", l_corner, h_corner);
   let unique_loops: Vec<Vec<DVector<f64>>> = get_all_loops(&l_corner, &h_corner, system)?;
   Ok(unique_loops)
 }
 
-fn has_any_loop<'a>(
-  l_corner: &Vec<i32>,
-  h_corner: &Vec<i32>,
-  system: &SystemEnum
-) -> bool {
+fn has_any_loop<'a>(l_corner: &Vec<i32>, h_corner: &Vec<i32>, system: &SystemEnum) -> bool {
   assert_eq!(l_corner.len(), h_corner.len());
   let dims = l_corner.len();
 
@@ -136,7 +130,6 @@ fn has_any_loop<'a>(
         println!("Loop: {:?}", loop_point);
         return true;
       }
-      // TODO: Handle errors
       Err(err) => {
         println!("Error: {:?}", err);
         return true;
@@ -145,10 +138,7 @@ fn has_any_loop<'a>(
   })
 }
 
-pub fn decision(
-  system: &SystemEnum
-) -> Result<bool, WorkerError> {
-
+pub fn decision(system: &SystemEnum) -> Result<bool, WorkerError> {
   if !satisfies_unit_condition(system.get_base()) {
     return Ok(false);
   }
@@ -161,7 +151,7 @@ pub fn decision(
 
 pub fn get_loop_floyd<'a>(
   system: &SystemEnum,
-  point: &DVector<f64>
+  point: &DVector<f64>,
 ) -> Result<Vec<DVector<f64>>, WorkerError> {
   let mut slow = system.phi(point)?;
   let mut fast = system.phi(&system.phi(point)?)?;
@@ -184,7 +174,10 @@ pub fn get_loop_floyd<'a>(
   Ok(loop_elements)
 }
 
-pub fn walk(system: &SystemEnum, start_point: DVector<f64>) -> Result<Vec<DVector<f64>>, WorkerError> {
+pub fn walk(
+  system: &SystemEnum,
+  start_point: DVector<f64>,
+) -> Result<Vec<DVector<f64>>, WorkerError> {
   let mut walked_points = Vec::new();
   let mut point = start_point;
 
@@ -203,9 +196,14 @@ pub fn walk(system: &SystemEnum, start_point: DVector<f64>) -> Result<Vec<DVecto
 
 #[cfg(test)]
 mod tests {
-  use crate::executor::algorithm::{digits::{SystemDigitsEnum, get_canonical, get_explicit, get_symmetric}, norms::NormEnum, systems::GenericSystem, systems_factories::{BuilderContext, GenericFactory, SystemFactory}};
+  use crate::executor::algorithm::{
+    digits::{SystemDigitsEnum, get_explicit, get_symmetric},
+    norms::NormEnum,
+    systems::GenericSystem,
+    systems_factories::{BuilderContext, GenericFactory, SystemFactory},
+  };
 
-use super::*;
+  use super::*;
   use nalgebra::DMatrix;
 
   #[test]
@@ -218,13 +216,12 @@ use super::*;
       DVector::from_row_slice(&[0.0, -1.0]),
       DVector::from_row_slice(&[-6.0, 5.0]),
     ];
-    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
+    let digits =
+      SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
     let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
 
     let start: DVector<f64> = DVector::from_column_slice(&[-6.0, 3.0]);
-    let expected = vec![
-      DVector::from_column_slice(&[0.0, 0.0])
-      ];
+    let expected = vec![DVector::from_column_slice(&[0.0, 0.0])];
     let res = get_loop_floyd(&system, &start)?;
     assert_eq!(expected, res);
 
@@ -241,7 +238,8 @@ use super::*;
       DVector::from_row_slice(&[0.0, -1.0]),
       DVector::from_row_slice(&[-6.0, 5.0]),
     ];
-    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
+    let digits =
+      SystemDigitsEnum::Explicit(get_explicit(&base, d).expect("Error creating digits"));
     let system = SystemEnum::Generic(GenericSystem::new(base, digits, NormEnum::Infinite)?);
 
     let start: DVector<f64> = DVector::from_column_slice(&[-6.0, 3.0]);
@@ -283,16 +281,17 @@ use super::*;
       DVector::from_row_slice(&[-3.0, -3.0, -3.0, -3.0]),
     ];
 
-    let digits = SystemDigitsEnum::Explicit(get_explicit(&base, digits).expect("digits should be fine"));
+    let digits =
+      SystemDigitsEnum::Explicit(get_explicit(&base, digits).expect("digits should be fine"));
     let builder_ctx = BuilderContext {
       base: base,
       digits,
-      norm: NormEnum::Infinite
+      norm: NormEnum::Infinite,
     };
     let system = GenericFactory.create(builder_ctx)?;
     let res = match decision(&system) {
       Ok(b) => b,
-      Err(_err) => panic!("error in decision")
+      Err(_err) => panic!("error in decision"),
     };
     assert!(res);
     Ok(())
@@ -306,12 +305,12 @@ use super::*;
     let builder_ctx = BuilderContext {
       base: base,
       digits,
-      norm: NormEnum::Infinite
+      norm: NormEnum::Infinite,
     };
     let system = GenericFactory.create(builder_ctx)?;
     let res = match decision(&system) {
       Ok(b) => b,
-      Err(_err) => panic!("error in decision")
+      Err(_err) => panic!("error in decision"),
     };
     assert!(res);
     Ok(())

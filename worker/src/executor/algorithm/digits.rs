@@ -1,17 +1,17 @@
 use nalgebra::{DMatrix, DVector};
 use std::{error::Error, fmt};
 
-use crate::executor::algorithm::lib::get_smith_data;
+use crate::executor::algorithm::math::get_smith_data;
 
 const BASE_NAME: &str = "base";
 const U_NAME: &str = "base's smith component";
 
 #[derive(Debug)]
 pub enum DigitsError {
-  InvalidExplicitDigitCount { expected: usize, actual: usize},
+  InvalidExplicitDigitCount { expected: usize, actual: usize },
   NonInvertible(String),
   InvalidAxis { axis: usize, dimension: usize },
-  InvalidShift { shift: u32, abs_det: i64 }
+  InvalidShift { shift: u32, abs_det: i64 },
 }
 
 impl fmt::Display for DigitsError {
@@ -83,7 +83,10 @@ impl SystemDigits for ExplicitDigits {
   }
 }
 
-pub fn get_explicit(base: &DMatrix<f64>, digits: Vec<DVector<f64>>) -> Result<ExplicitDigits, DigitsError> {
+pub fn get_explicit(
+  base: &DMatrix<f64>,
+  digits: Vec<DVector<f64>>,
+) -> Result<ExplicitDigits, DigitsError> {
   let det = base.determinant() as i64;
   let abs_det = det.unsigned_abs() as usize;
   if digits.len() != abs_det {
@@ -104,7 +107,12 @@ impl SystemDigits for CanonicalDigits {
   }
 
   fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
-    Box::new(axis_digits(self.dim, self.abs_det, self.j_value, |value| value as f64))
+    Box::new(axis_digits(
+      self.dim,
+      self.abs_det,
+      self.j_value,
+      |value| value as f64
+    ))
   }
 }
 
@@ -112,7 +120,10 @@ pub fn get_canonical(base: &DMatrix<f64>) -> Result<CanonicalDigits, DigitsError
   get_j_canonical(base, 0)
 }
 
-pub fn get_j_canonical(base: &DMatrix<f64>, j_value: usize) -> Result<CanonicalDigits, DigitsError> {
+pub fn get_j_canonical(
+  base: &DMatrix<f64>,
+  j_value: usize,
+) -> Result<CanonicalDigits, DigitsError> {
   let dim = base.ncols();
   validate_axis(dim, j_value)?;
   let abs_det = (base.determinant() as i64).unsigned_abs();
@@ -133,7 +144,12 @@ impl SystemDigits for SymmetricDigits {
 
   fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
     let center = (self.abs_det / 2) as f64;
-    Box::new(axis_digits(self.dim, self.abs_det, self.j_value, move |value| value as f64 - center))
+    Box::new(axis_digits(
+      self.dim,
+      self.abs_det,
+      self.j_value,
+      move |value| value as f64 - center,
+    ))
   }
 }
 
@@ -141,7 +157,10 @@ pub fn get_symmetric(base: &DMatrix<f64>) -> Result<SymmetricDigits, DigitsError
   get_j_symmetric(base, 0)
 }
 
-pub fn get_j_symmetric(base: &DMatrix<f64>, j_value: usize) -> Result<SymmetricDigits, DigitsError> {
+pub fn get_j_symmetric(
+  base: &DMatrix<f64>,
+  j_value: usize,
+) -> Result<SymmetricDigits, DigitsError> {
   let dim = base.ncols();
   validate_axis(dim, j_value)?;
   let abs_det = (base.determinant() as i64).unsigned_abs();
@@ -167,12 +186,21 @@ impl SystemDigits for ShiftedCanonicalDigits {
   }
 }
 
-pub fn get_shifted_canonical(base: &DMatrix<f64>, j_value: usize, shift: u32) -> Result<ShiftedCanonicalDigits, DigitsError> {
+pub fn get_shifted_canonical(
+  base: &DMatrix<f64>,
+  j_value: usize,
+  shift: u32,
+) -> Result<ShiftedCanonicalDigits, DigitsError> {
   let dim = base.ncols();
   validate_axis(dim, j_value)?;
   let abs_det = (base.determinant() as i64).unsigned_abs();
   validate_shift(abs_det, shift)?;
-  Ok(ShiftedCanonicalDigits { dim, abs_det, j_value, shift })
+  Ok(ShiftedCanonicalDigits {
+    dim,
+    abs_det,
+    j_value,
+    shift,
+  })
 }
 
 pub struct AdjointDigits {
@@ -182,26 +210,27 @@ pub struct AdjointDigits {
   abs_det: u64,
   base: DMatrix<f64>,
   base_inv: DMatrix<f64>,
-  u_inv: DMatrix<f64>
+  u_inv: DMatrix<f64>,
 }
 
 impl SystemDigits for AdjointDigits {
-
   fn get_digits_vec(&self) -> Vec<DVector<f64>> {
     let abs_determinant = self.abs_det;
     let det = self.det as f64;
     let adjugate = &self.base_inv * det;
     let zero = DVector::from_element(self.dim, 0.0);
 
-    complete_residue_vectors(self.dim, abs_determinant, self.g_vec.clone()).map(move |residue| {
-      let vector = &self.u_inv * residue;
-      let rounded = round_vector(&vector);
-      if rounded == zero {
-        rounded
-      } else {
-        adjoint_congruent_element(self.dim, self.det, &self.base, &adjugate, &rounded)
-      }
-    }).collect()
+    complete_residue_vectors(self.dim, abs_determinant, self.g_vec.clone())
+      .map(move |residue| {
+        let vector = &self.u_inv * residue;
+        let rounded = round_vector(&vector);
+        if rounded == zero {
+          rounded
+        } else {
+          adjoint_congruent_element(self.dim, self.det, &self.base, &adjugate, &rounded)
+        }
+      })
+      .collect()
   }
 
   fn get_digits_iter(&self) -> Box<dyn Iterator<Item = DVector<f64>> + Send + '_> {
@@ -210,32 +239,45 @@ impl SystemDigits for AdjointDigits {
     let adjugate = &self.base_inv * det;
     let zero = DVector::from_element(self.dim, 0.0);
 
-    Box::new(complete_residue_vectors(self.dim, abs_determinant, self.g_vec.clone()).map(move |residue| {
-      let vector = &self.u_inv * residue;
-      let rounded = round_vector(&vector);
-      if rounded == zero {
-        rounded
-      } else {
-        adjoint_congruent_element(self.dim, self.det, &self.base, &adjugate, &rounded)
-      }
-    }))
+    Box::new(
+      complete_residue_vectors(self.dim, abs_determinant, self.g_vec.clone()).map(
+        move |residue| {
+          let vector = &self.u_inv * residue;
+          let rounded = round_vector(&vector);
+          if rounded == zero {
+            rounded
+          } else {
+            adjoint_congruent_element(
+              self.dim, self.det, &self.base, &adjugate, &rounded,
+            )
+          }
+        },
+      ),
+    )
   }
 }
 
 pub fn get_adjoint(base: &DMatrix<f64>) -> Result<AdjointDigits, DigitsError> {
   let base_inv = match base.clone().try_inverse() {
     Some(inv) => inv,
-    None => return Err(DigitsError::NonInvertible(BASE_NAME.to_string()))
+    None => return Err(DigitsError::NonInvertible(BASE_NAME.to_string())),
   };
 
   let (u, g_vec) = get_smith_data(&base);
   let u_inv = match u.clone().try_inverse() {
     Some(inv) => inv,
-    // TODO: New Error
-    None => return Err(DigitsError::NonInvertible(U_NAME.to_string()))
+    None => return Err(DigitsError::NonInvertible(U_NAME.to_string())),
   };
   let det = base.determinant() as i64;
-  Ok(AdjointDigits { dim: base.ncols(), det, abs_det: det.unsigned_abs(), base: base.clone(), base_inv, u_inv, g_vec })
+  Ok(AdjointDigits {
+    dim: base.ncols(),
+    det,
+    abs_det: det.unsigned_abs(),
+    base: base.clone(),
+    base_inv,
+    u_inv,
+    g_vec,
+  })
 }
 
 fn axis_digits(
@@ -273,7 +315,11 @@ fn validate_shift(abs_determinant: u64, shift: u32) -> Result<(), DigitsError> {
   }
 }
 
-fn complete_residue_vectors(dim: usize, abs_determinant: u64, g: Vec<i64>) -> impl Iterator<Item = DVector<f64>> {
+fn complete_residue_vectors(
+  dim: usize,
+  abs_determinant: u64,
+  g: Vec<i64>,
+) -> impl Iterator<Item = DVector<f64>> {
   let bases = g.to_vec();
 
   (0..abs_determinant).map(move |mut index| {

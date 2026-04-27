@@ -2,7 +2,14 @@ use std::collections::HashMap;
 
 use nalgebra::{DMatrix, DVector};
 
-use crate::{executor::algorithm::{digits::{SystemDigits, SystemDigitsEnum}, lib::{build_h_i, find_c_gamma, get_smith_data, hash_point}, norms::NormEnum}, error::WorkerError};
+use crate::{
+  error::WorkerError,
+  executor::algorithm::{
+    digits::{SystemDigits, SystemDigitsEnum},
+    math::{build_h_i, find_c_gamma, get_smith_data, hash_point},
+    norms::NormEnum,
+  },
+};
 
 pub trait System {
   fn get_base(&self) -> &DMatrix<f64>;
@@ -12,31 +19,31 @@ pub trait System {
 }
 
 pub enum SystemEnum {
-  Generic(GenericSystem)
+  Generic(GenericSystem),
 }
 
 impl System for SystemEnum {
   fn get_base(&self) -> &DMatrix<f64> {
     match self {
-      SystemEnum::Generic(s) => s.get_base()
+      SystemEnum::Generic(s) => s.get_base(),
     }
   }
 
   fn get_digits(&self) -> &SystemDigitsEnum {
     match self {
-      SystemEnum::Generic(s) => s.get_digits()
+      SystemEnum::Generic(s) => s.get_digits(),
     }
   }
 
   fn get_cover_box(&self) -> Result<(Vec<i32>, Vec<i32>), WorkerError> {
     match self {
-      SystemEnum::Generic(s) => s.get_cover_box()
+      SystemEnum::Generic(s) => s.get_cover_box(),
     }
   }
 
   fn phi(&self, point: &DVector<f64>) -> Result<DVector<f64>, WorkerError> {
     match self {
-      SystemEnum::Generic(s) => s.phi(point)
+      SystemEnum::Generic(s) => s.phi(point),
     }
   }
 }
@@ -51,11 +58,15 @@ pub struct GenericSystem {
   u: DMatrix<f64>,
   g_vec: Vec<i64>,
   s: usize,
-  g_prods: Vec<i64>
+  g_prods: Vec<i64>,
 }
 
 impl GenericSystem {
-  pub fn new(base: DMatrix<f64>, digits: SystemDigitsEnum, norm: NormEnum) -> Result<Self, WorkerError> {
+  pub fn new(
+    base: DMatrix<f64>,
+    digits: SystemDigitsEnum,
+    norm: NormEnum,
+  ) -> Result<Self, WorkerError> {
     let dim = base.ncols();
 
     let m_inv = match base.clone().try_inverse() {
@@ -65,10 +76,11 @@ impl GenericSystem {
 
     let (u, g_vec) = get_smith_data(&base);
 
-    let g_prods: Vec<i64> = g_vec.iter()
+    let g_prods: Vec<i64> = g_vec
+      .iter()
       .scan(1i64, |acc, &x| {
-          *acc *= x;
-          Some(*acc)
+        *acc *= x;
+        Some(*acc)
       })
       .collect();
 
@@ -80,17 +92,29 @@ impl GenericSystem {
 
     let abs_det = (base.determinant() as i64).unsigned_abs() as usize;
     if h_map.len() != abs_det {
-      return Err(WorkerError::InvalidInput("Digits don't form full residue system".to_string()));
+      return Err(WorkerError::InvalidInput(
+        "Digits don't form full residue system".to_string(),
+      ));
     }
 
-    Ok(GenericSystem { dim, base, digits, m_inv, norm, h_map, u: u, g_vec: g_vec, s, g_prods})
+    Ok(GenericSystem {
+      dim,
+      base,
+      digits,
+      m_inv,
+      norm,
+      h_map,
+      u: u,
+      g_vec: g_vec,
+      s,
+      g_prods,
+    })
   }
 
   pub fn valid_for() -> bool {
     true
   }
 }
-
 
 impl System for GenericSystem {
   fn get_base(&self) -> &DMatrix<f64> {
@@ -112,7 +136,9 @@ impl System for GenericSystem {
 
     for j in 0..c {
       let mut iter = self.digits.get_digits_iter();
-      let first = iter.next().ok_or(WorkerError::Unhandled("No digits found".to_string()))?;
+      let first = iter
+        .next()
+        .ok_or(WorkerError::Unhandled("No digits found".to_string()))?;
 
       let mut xi_j = &m_pow * &first;
       let mut eta_j = xi_j.clone();
@@ -149,17 +175,16 @@ impl System for GenericSystem {
 
   fn phi(&self, point: &DVector<f64>) -> Result<DVector<f64>, WorkerError> {
     let point_hash = hash_point(self.dim, self.s, &self.u, &self.g_vec, &self.g_prods, point);
-    
+
     let congruent_digit = match self.h_map.get(&point_hash) {
       Some(digit) => digit,
-      None => return Err(WorkerError::NoCongruentDigit(point.clone()))
+      None => return Err(WorkerError::NoCongruentDigit(point.clone())),
     };
     let diff = point - congruent_digit;
     let mut res = &self.m_inv * diff;
     res.apply(|el| *el = el.round());
     Ok(res)
   }
-
 }
 
 mod tests {
@@ -210,7 +235,8 @@ mod tests {
       DVector::from_row_slice(&[-6.0, 5.0]),
     ];
     let digits_enum = SystemDigitsEnum::Explicit(get_explicit(&base, d).expect(""));
-    let system = SystemEnum::Generic(GenericSystem::new(base, digits_enum, NormEnum::Infinite)?);
+    let system =
+      SystemEnum::Generic(GenericSystem::new(base, digits_enum, NormEnum::Infinite)?);
     let expected_box: (Vec<i32>, Vec<i32>) = (vec![-2, -6], vec![2, 1]);
     let cover_box = system.get_cover_box()?;
     println!("Box: {:?}", cover_box);

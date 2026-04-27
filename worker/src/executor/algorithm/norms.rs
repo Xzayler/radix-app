@@ -2,7 +2,7 @@ use std::fmt;
 
 use nalgebra::{DMatrix, LpNorm, UniformNorm};
 
-use crate::executor::algorithm::lib::spectral_norm;
+use crate::executor::algorithm::math::spectral_norm;
 
 pub trait Norm {
   fn get_matrix_norm(&self, matrix: &DMatrix<f64>) -> f64;

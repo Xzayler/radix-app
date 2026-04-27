@@ -51,14 +51,11 @@ pub struct Job {
 
 impl FromRow<'_, PgRow> for Job {
   fn from_row(row: &PgRow) -> sqlx::Result<Self> {
-    
     let digits: Option<Vec<Vec<i32>>> = match row.get::<Option<String>, &str>("digits") {
-      Some(str_value) => {
-        Some(parse_vector_of_vectors(&str_value))
-      },
-      None => None
+      Some(str_value) => Some(parse_vector_of_vectors(&str_value)),
+      None => None,
     };
-    
+
     let system = DbSystem {
       id: row.get("system_id"),
       dimension: row.get("dimension"),
@@ -72,11 +69,10 @@ impl FromRow<'_, PgRow> for Job {
       system: system,
       job_type: row.get("job_type"),
       norm: row.get("norm"),
-      walk_from: row.get("start_point"),
+      walk_from: row.get("start_point")
     })
   }
 }
-
 
 pub fn parse_vector_of_vectors(s: &str) -> Vec<Vec<i32>> {
   let inner = &s[1..s.len() - 1];
@@ -84,14 +80,12 @@ pub fn parse_vector_of_vectors(s: &str) -> Vec<Vec<i32>> {
   let mut result = Vec::new();
   for part in parts {
     let cleaned = part.trim_matches('{').trim_matches('}');
-    let nums: Vec<i32> = cleaned.split(',')
-      .map(|n| {
-          match n.trim().parse::<i32>() {
-            Ok(res)=> res,
-            Err(err) => panic!("Could not parse digits from database! {err}")
-          }
-        }
-      )
+    let nums: Vec<i32> = cleaned
+      .split(',')
+      .map(|n| match n.trim().parse::<i32>() {
+        Ok(res) => res,
+        Err(err) => panic!("Could not parse digits from database! {err}"),
+      })
       .collect();
     result.push(nums);
   }
@@ -100,5 +94,5 @@ pub fn parse_vector_of_vectors(s: &str) -> Vec<Vec<i32>> {
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct JobId {
-  pub id: i32
+  pub id: i32,
 }
