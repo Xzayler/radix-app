@@ -189,22 +189,16 @@ async function insertOrGetVectors(digits: number[][]): Promise<number[]> {
       VALUES ${pgArrayString}
     ),
     inserted AS (
-        INSERT INTO "digits" (elements)
-        SELECT elements FROM input
-        ON CONFLICT (elements) DO NOTHING
-        RETURNING *
+    INSERT INTO digits (elements)
+    SELECT elements FROM input
+    ON CONFLICT (elements) DO NOTHING
+    RETURNING id, digits.elements
     )
-    (SELECT id FROM inserted
-
+    SELECT id, elements FROM inserted
     UNION ALL
-
-    SELECT id
-    FROM "digits"
-    WHERE "elements" IN (SELECT elements FROM input)
-    AND NOT EXISTS (
-        SELECT 1
-        FROM inserted
-    ));`),
+    SELECT d.id, d.elements
+    FROM digits d
+    WHERE d.elements IN (SELECT elements FROM input)`),
   );
   const rows = res.rows as { id: number }[];
   return rows.map((res) => res.id);
