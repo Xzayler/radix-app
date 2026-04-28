@@ -245,6 +245,44 @@ mod tests {
   }
 
   #[test]
+  fn classification_test() {
+    let base = DMatrix::from_row_slice(2,2, &[3.0, 14.0, 7.0, 3.0]);
+    let digits = get_canonical(&base).expect("canonical");
+    let system = GenericSystem::new(
+      base,
+      SystemDigitsEnum::Canonical(digits),
+      NormEnum::Infinite
+    ).expect("system");
+
+    let res = classification(&SystemEnum::Generic(system)).expect("loops");
+    let expected_p_points = vec![
+        dvec(&[2.0, -6.0]),
+        dvec(&[0.0, -2.0]),
+        dvec(&[1.0, -3.0]),
+        dvec(&[0.0, -1.0]),
+        dvec(&[2.0, -5.0]),
+        dvec(&[1.0, -4.0]),
+        dvec(&[-1.0, 0.0]),
+        dvec(&[3.0, -7.0]),
+        dvec(&[0.0, 0.0])
+    ];
+
+    let loop_lengths: Vec<usize> = res.clone().into_iter()
+      .map(|l| l.len())
+      .collect();
+    assert_eq!(loop_lengths.len(), 3);
+    assert!(loop_lengths.contains(&1));
+    assert!(loop_lengths.contains(&2));
+    assert!(loop_lengths.contains(&6));
+
+    let p_points: Vec<DVector<f64>> = res.into_iter().flatten().collect();
+    for point in p_points {
+      assert!(expected_p_points.contains(&point));
+    }
+    
+  }
+
+  #[test]
   fn walk_test() {
     let system = build_explicit_system(
       2,

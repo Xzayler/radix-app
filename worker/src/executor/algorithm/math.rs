@@ -122,6 +122,137 @@ pub fn find_c_gamma(m_inv: &DMatrix<f64>, norm: &NormEnum) -> Result<(usize, f64
 pub fn satisfies_unit_condition(base: &DMatrix<f64>) -> bool {
   let dim: usize = base.ncols();
   let identity_matrix: DMatrix<f64> = DMatrix::identity(dim, dim);
-  let det = (identity_matrix - base).determinant().round();
-  det != 1.0 && det != -1.0
+  let det = (identity_matrix - base).determinant();
+  (det.abs() - 1.0).round() != 0.0
+}
+
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use na::DMatrix;
+
+  #[test]
+  fn classification() {
+
+  }
+
+  #[test]
+  fn smith_data_non_diagonal() {
+    let m = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
+    let (_u, diag) = get_smith_data(&m);
+
+    let product: i64 = diag.iter().product();
+    assert_eq!(product, 5);
+  }
+
+  #[test]
+  fn smith_data_3x3() {
+    let m = DMatrix::from_row_slice(3, 3, &[
+      2.0, 3.0, 1.0,
+      -4.0, 0.0, -1.0,
+      -1.0, 2.0, 5.0,
+    ]);
+    let (_u, diag) = get_smith_data(&m);
+
+    let product: i64 = diag.iter().product();
+    assert_eq!(product, 59);
+    assert_eq!(diag[1] % diag[0], 0);
+    assert_eq!(diag[2] % diag[1], 0);
+  }
+
+  #[test]
+  fn spectral_norm_identity() {
+    let m = DMatrix::from_row_slice(3, 3, &[
+      1.0, 0.0, 0.0,
+      0.0, 1.0, 0.0,
+      0.0, 0.0, 1.0,
+    ]);
+    let norm = spectral_norm(&m);
+    assert!((norm - 1.0).abs() < 1e-10);
+  }
+
+  #[test]
+  fn spectral_norm_scaled_identity() {
+    let m = DMatrix::from_row_slice(2, 2, &[3.0, 0.0, 0.0, 3.0]);
+    let norm = spectral_norm(&m);
+    assert!((norm - 3.0).abs() < 1e-10);
+  }
+
+  #[test]
+  fn spectral_norm_zero_matrix() {
+    let m = DMatrix::from_row_slice(2, 2, &[0.0, 0.0, 0.0, 0.0]);
+    let norm = spectral_norm(&m);
+    assert!(norm.abs() < 1e-10);
+  }
+
+  #[test]
+  fn spectral_norm_diagonal() {
+    let m = DMatrix::from_row_slice(2, 2, &[2.0, 0.0, 0.0, 5.0]);
+    let norm = spectral_norm(&m);
+    assert!((norm - 5.0).abs() < 1e-10);
+  }
+
+  #[test]
+  fn unit_condition_identity() {
+    let base = DMatrix::from_row_slice(2, 2, &[1.0, 0.0, 0.0, 1.0]);
+    assert!(satisfies_unit_condition(&base));
+  }
+
+  #[test]
+  fn unit_condition_2i() {
+    let base = DMatrix::from_row_slice(2, 2, &[2.0, 0.0, 0.0, 2.0]);
+    assert!(!satisfies_unit_condition(&base));
+  }
+
+  #[test]
+  fn unit_condition_5i() {
+    let base = DMatrix::from_row_slice(2, 2, &[5.0, 0.0, 0.0, 5.0]);
+    assert!(satisfies_unit_condition(&base));
+  }
+
+  #[test]
+  fn unit_condition_m() {
+    let base = DMatrix::from_row_slice(2, 2, &[2.0, -1.0, 1.0, 2.0]);
+    assert!(satisfies_unit_condition(&base));
+  }
+
+
+  #[test]
+  fn find_c_gamma_contractive_inverse() {
+    let m_inv = DMatrix::from_row_slice(2, 2, &[0.5, 0.0, 0.0, 0.5]);
+    let norm = NormEnum::Infinite;
+    let (c, gamma) = find_c_gamma(&m_inv, &norm).expect("ok");
+
+    assert!(gamma > 1.0);
+    assert_eq!(c, 7);
+  }
+
+  #[test]
+  fn find_c_gamma_not_contractive() {
+    let m_inv = DMatrix::from_row_slice(2, 2, &[1.0, 0.0, 0.0, 1.0]);
+    let norm = NormEnum::Infinite;
+    let result = find_c_gamma(&m_inv, &norm);
+    assert!(result.is_err());
+  }
+
+  #[test]
+  fn find_c_gamma_barely_contractive() {
+    let m_inv = DMatrix::from_row_slice(2, 2, &[0.99, 0.0, 0.0, 0.99]);
+    let norm = NormEnum::Infinite;
+    let (c, gamma) = find_c_gamma(&m_inv, &norm).expect("ok");
+
+    assert_eq!(c, 459);
+    assert!(gamma > 1.0);
+  }
+
+  #[test]
+  fn find_c_gamma_l2_norm() {
+    let m_inv = DMatrix::from_row_slice(2, 2, &[0.3, 0.0, 0.0, 0.3]);
+    let norm = NormEnum::L2;
+    let (c, gamma) = find_c_gamma(&m_inv, &norm).expect("ok");
+
+    assert_eq!(c, 4);
+    assert!(gamma > 1.0);
+  }
 }

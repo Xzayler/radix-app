@@ -144,8 +144,7 @@ export const jobsTable = pgTable(
     error: text('error'),
   },
   (table) => [
-    index('system_id_index').on(table.systemId),
-    index('user_id_index').on(table.userId),
+    index('system_id_index').on(table.systemId)
   ],
 );
 
