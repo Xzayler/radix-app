@@ -16,12 +16,7 @@ export default function TablePagination(props: {
       >
         Previous
       </Button>
-      <div
-        class=""
-        onClick={(e) => {
-          console.log('V: ' + props.hasNext);
-        }}
-      >
+      <div>
         <span>{`Page ${props.value}`}</span>
       </div>
       <Button

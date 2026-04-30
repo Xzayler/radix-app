@@ -30,30 +30,26 @@ export const digitTypeEnum = pgEnum('digit_type', [
   'Shifted',
 ]);
 
-export const systemsTable = pgTable(
-  'systems',
-  {
-    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-    name: text('name').notNull(),
-    userId: integer('user_id').references(() => usersTable.id, {
-      onDelete: 'set null',
-    }),
-    dimension: integer('dimension').notNull(),
-    base: integer('base').array().notNull(),
-    digitType: digitTypeEnum('digit_type').notNull(),
-    isGNS: boolean('is_gns'),
-    signature: integer('signature').array(),
-    lastJob: timestamp('last_job', {
-      mode: 'date',
-      precision: 0,
-      withTimezone: true,
-    }),
-    // Digit-specific fields
-    digitIds: integer('digits').array(), // array of ids in vector table
-    digitParam: integer('digit_param'),
-  },
-  // (table) => [index('digits_index').using('gin', table.digitIds)],
-);
+export const systemsTable = pgTable('systems', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  name: text('name').notNull(),
+  userId: integer('user_id').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  dimension: integer('dimension').notNull(),
+  base: integer('base').array().notNull(),
+  digitType: digitTypeEnum('digit_type').notNull(),
+  isGNS: boolean('is_gns'),
+  signature: integer('signature').array(),
+  lastJob: timestamp('last_job', {
+    mode: 'date',
+    precision: 0,
+    withTimezone: true,
+  }),
+  // Digit-specific fields
+  digitIds: integer('digits').array(), // array of ids in vector table
+  digitParam: integer('digit_param'),
+});
 
 export const digitsTable = pgTable('digits', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
@@ -143,9 +139,7 @@ export const jobsTable = pgTable(
     }),
     error: text('error'),
   },
-  (table) => [
-    index('system_id_index').on(table.systemId)
-  ],
+  (table) => [index('system_id_index').on(table.systemId)],
 );
 
 export const jobsRelations = relations(jobsTable, ({ one }) => ({

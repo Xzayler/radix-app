@@ -3,6 +3,8 @@ services:
     build:
       context: ..
       dockerfile: docker/DockerfileWorker
+    mem_limit: ${WORKER_MEMORY_GB}g
+    memswap_limit: ${WORKER_MEMORY_GB}g
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_ENDPOINT}:${POSTGRES_PORT}/${POSTGRES_DB_NAME}
       MINIO_USER: ${MINIO_USER}

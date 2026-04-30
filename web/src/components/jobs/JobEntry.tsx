@@ -1,6 +1,6 @@
 import { Job } from '~/types';
 import { columns, ColumnType } from './jobTableColumns';
-import { Accessor, createSignal, For } from 'solid-js';
+import { For } from 'solid-js';
 import { Button } from '@kobalte/core/button';
 import { A, createAsync } from '@solidjs/router';
 import { getDownloadUrl } from '~/api/server';
@@ -46,10 +46,10 @@ const generateCell = (
       return (
         <Button
           class="text-accent aspect-square h-8 cursor-pointer disabled:text-faint disabled:cursor-not-allowed "
-          disabled={downloadUrl === null}
+          disabled={!downloadUrl}
         >
           {downloadUrl ? (
-            <A href={downloadUrl}>
+            <A href={downloadUrl} download={`${job.id}.json`}>
               <DownloadIcon />
             </A>
           ) : (
@@ -72,8 +72,7 @@ export default function JobEntry(props: { job: Job }) {
       if (!props.job.outputUri) {
         return null;
       }
-      const a = await getDownloadUrl(props.job.outputUri!);
-      return a;
+      return await getDownloadUrl(props.job.outputUri);
     },
     {
       initialValue: null,

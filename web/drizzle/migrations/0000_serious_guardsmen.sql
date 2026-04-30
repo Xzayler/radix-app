@@ -1,4 +1,4 @@
-CREATE TYPE "public"."digit_type" AS ENUM('Explicit', 'Canonical', 'JCanonical', 'Dense', 'Adjoint', 'Symmetric', 'JSymmetric', 'Shifted');--> statement-breakpoint
+CREATE TYPE "public"."digit_type" AS ENUM('Explicit', 'Canonical', 'JCanonical', 'Adjoint', 'Symmetric', 'JSymmetric', 'Shifted');--> statement-breakpoint
 CREATE TYPE "public"."job_type" AS ENUM('Walk', 'Decision', 'Classification');--> statement-breakpoint
 CREATE TYPE "public"."norm_type" AS ENUM('Infinite', 'L1', 'L2');--> statement-breakpoint
 CREATE TYPE "public"."status" AS ENUM('Pending', 'Running', 'Succeeded', 'Failed');--> statement-breakpoint
@@ -54,8 +54,6 @@ ALTER TABLE "favourites" ADD CONSTRAINT "favourites_user_id_users_id_fk" FOREIGN
 ALTER TABLE "favourites" ADD CONSTRAINT "favourites_system_id_systems_id_fk" FOREIGN KEY ("system_id") REFERENCES "public"."systems"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_system_id_systems_id_fk" FOREIGN KEY ("system_id") REFERENCES "public"."systems"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "systems" ADD CONSTRAINT "systems_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "systems" ADD CONSTRAINT "systems_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "system_id_index" ON "jobs" USING btree ("system_id");--> statement-breakpoint
-CREATE INDEX "user_id_index" ON "jobs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "digits_index" ON "systems" USING gin ("digits");--> statement-breakpoint
 CREATE INDEX "user_name_index" ON "users" USING btree ("user_name");

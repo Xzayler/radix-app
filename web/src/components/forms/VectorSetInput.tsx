@@ -1,6 +1,6 @@
 import { createEffect, createSignal, JSX } from 'solid-js';
 import TextAreaInput from './TextAreaInput';
-import { validateStringAsExplicitDigits } from '~/lib/validators';
+import { validateStringAsExplicitDigits } from '~/lib/utils/validators';
 
 export default function VectorSetInput(props: {
   label: JSX.Element;
@@ -9,6 +9,7 @@ export default function VectorSetInput(props: {
   dim: number;
   placeholder?: string;
   disabled?: boolean;
+  required?: boolean;
 }) {
   const [error, setError] = createSignal<string>();
   const [inputStr, setInputStr] = createSignal<string>('');
@@ -44,6 +45,7 @@ export default function VectorSetInput(props: {
       onChange={setInputStr}
       error={error()}
       disabled={props.disabled}
+      required={props.required}
     />
   );
 }

@@ -8,7 +8,7 @@ import {
 } from '~/lib/db/operations';
 import { User } from '~/types';
 import { UserDbInsert } from '~/lib/db/dbTypes';
-import { validateInputAsString, validateUsername } from './validators';
+import { validateInputAsString, validateUsername } from './utils/validators';
 
 type SessionData = {
   userId: number | undefined;

@@ -13,10 +13,6 @@ export default function SystemsFilters(props: {
   value: SystemsFilter;
   setValue: (v: SystemsFilter) => void;
 }) {
-  createEffect(() => {
-    console.log(props.value);
-  });
-
   return (
     <div class="">
       <div class="flex flex-wrap items-start p-2 gap-3 rounded-md bg-highlight ">

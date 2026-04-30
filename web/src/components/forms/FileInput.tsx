@@ -11,8 +11,6 @@ export default function FileInput(props: {
       class="flex flex-col items-center content-center w-full "
       accept={['.json']}
       allowDragAndDrop={true}
-      onFileAccept={(data) => console.log('accepted:', data)}
-      onFileReject={(data) => console.log('rejected: ', data)}
     >
       <FileField.Dropzone class="flex flex-col items-center gap-y-1.5 justify-center rounded-xl border-solid border border-ui w-full py-16">
         <div>{props.label}</div>

@@ -18,7 +18,7 @@ import {
   validateNumberAsPositiveInteger,
   validateStringAsDigitType,
   validateStringAsName,
-} from '../validators';
+} from './validators';
 
 function isVector(v: unknown, size: number): v is Vector {
   return (
@@ -91,7 +91,7 @@ function parseDigits(obj: Object, dim: number): Digits {
     case 'JSymmetric':
       if (!('jValue' in obj) || typeof obj.jValue != 'number') {
         throw new Error(
-          `Digits must include a "jValue" array property if "type" is ${type}.`,
+          `Digits must include a "jValue" number property if "type" is ${type}.`,
         );
       }
       const jValue = validateNumberAsJValue(obj.jValue, dim);
@@ -99,7 +99,7 @@ function parseDigits(obj: Object, dim: number): Digits {
     case 'Shifted':
       if (!('shift' in obj) || typeof obj.shift != 'number') {
         throw new Error(
-          `Digits must include a "jValue" array property if "type" is ${type}.`,
+          `Digits must include a "shift" number property if "type" is ${type}.`,
         );
       }
       const shift = validateNumberAsPositiveInteger(obj.shift, 'shift');

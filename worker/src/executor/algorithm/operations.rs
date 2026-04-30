@@ -238,8 +238,8 @@ mod tests {
         vec![-6.0, 5.0],
       ]
     );
-    let start: DVector<f64> = DVector::from_column_slice(&[-6.0, 3.0]);
-    let expected = vec![DVector::from_column_slice(&[0.0, 0.0])];
+    let start: DVector<f64> = dvec(&[-6.0, 3.0]);
+    let expected = vec![dvec(&[0.0, 0.0])];
     let res = get_loop_floyd(&system, &start).expect("loops");
     assert_eq!(expected, res);
   }
@@ -281,6 +281,7 @@ mod tests {
     }
     
   }
+
 
   #[test]
   fn walk_test() {
@@ -576,7 +577,7 @@ mod tests {
   }
 
   #[test]
-  fn decision_4d_symmetric_is_gns() -> Result<(), WorkerError> {
+  fn decision_test_10() -> Result<(), WorkerError> {
     let base = DMatrix::from_row_slice(4, 4, &[
       0.0, 0.0, 0.0, -15.0,
       1.0, 0.0, 0.0,  -1.0,

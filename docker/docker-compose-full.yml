@@ -11,6 +11,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     restart: unless-stopped
+    networks:
+      - minio-net
 
   migrate:
     build:
@@ -22,12 +24,13 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB_NAME}
     restart: 'no'
+    networks:
+      - minio-net
 
   minio:
     image: quay.io/minio/minio
     container_name: radix-minio
     ports:
-      - ${MINIO_PORT}:${MINIO_PORT}
       - '9001:9001'
     environment:
       MINIO_ROOT_USER: ${MINIO_USER}
@@ -36,6 +39,8 @@ services:
     volumes:
       - minio_data:/data
     restart: unless-stopped
+    networks:
+      - minio-net
 
   minio-bucket-setup:
     build:
@@ -51,6 +56,19 @@ services:
       MINIO_PORT: ${MINIO_PORT}
       MINIO_BUCKET: ${MINIO_BUCKET}
     restart: no
+    networks:
+      - minio-net
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - '${MINIO_PORT}:${MINIO_PORT}'
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - minio
+    networks:
+      - minio-net
 
   web:
     build:
@@ -73,11 +91,15 @@ services:
     ports:
       - '3000:3000'
     restart: unless-stopped
+    networks:
+      - minio-net
 
   worker:
     build:
       context: ..
       dockerfile: docker/DockerfileWorker
+    mem_limit: ${WORKER_MEMORY_GB}g
+    memswap_limit: ${WORKER_MEMORY_GB}g
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -91,7 +113,9 @@ services:
       MINIO_PORT: ${MINIO_PORT}
       MINIO_BUCKET: ${MINIO_BUCKET}
       POLLING_RATE: ${POLLING_RATE_SECONDS}
-    restart: unless-stopped
+    restart: on-failure
+    networks:
+      - minio-net
 
 volumes:
   minio_data:
@@ -100,3 +124,5 @@ volumes:
 networks:
   default:
     name: radix
+  minio-net:
+    driver: bridge

@@ -1,6 +1,6 @@
 import { createEffect, createSignal, JSX } from 'solid-js';
 import TextAreaInput from './TextAreaInput';
-import { validateStringAsFlatMatrix } from '~/lib/validators';
+import { validateStringAsFlatMatrix } from '~/lib/utils/validators';
 
 const toMatrix = (baseStr: string, size: number): number[][] => {
   if (!baseStr.length) {

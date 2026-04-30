@@ -5,7 +5,7 @@ import NaturalNumberInput from '../forms/NaturalNumberInput';
 import StyledSelect from '../forms/StyledSelect';
 import { DigitType } from '~/types';
 import NumberInput from '../forms/NumberInput';
-import { digitNeedsParam } from '~/lib/validators';
+import { digitNeedsParam } from '~/lib/utils/validators';
 import MatrixInput from '../forms/MatrixInput';
 import VectorSetInput from '../forms/VectorSetInput';
 import VectorSet from './entryFields/VectorSet';
@@ -134,6 +134,7 @@ export default function SystemForm() {
             placeholder="0 1 2..."
             setValue={setDigits}
             disabled={digitType() != 'Explicit'}
+            required={digitType() == 'Explicit'}
           />
         </div>
         <div>

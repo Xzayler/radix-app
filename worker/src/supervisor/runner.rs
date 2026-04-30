@@ -1,4 +1,4 @@
-use std::{env, error::Error, fmt};
+use std::{env, error::Error, fmt, os::unix::process::CommandExt};
 
 use crate::db::{self, update_db_with_job_error};
 
@@ -19,6 +19,7 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
   };
 
   loop {
+    println!("Polling for jobs");
     let pending_job = match db::pick_pending_job(&pool).await {
       Ok(res) => res,
       Err(err) => {
@@ -30,11 +31,21 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
       Some(job) => {
         let id = job.id;
         println!("Found job with id: {}", id);
-        let mut child = match std::process::Command::new(current_path)
-          .arg("worker")
-          .arg(id.to_string())
-          .spawn()
-        {
+        let process = unsafe {
+          std::process::Command::new(current_path)
+            .pre_exec(|| {
+              let pid = std::process::id();
+              std::fs::write(
+                  format!("/proc/{}/oom_score_adj", pid),
+                  "1000\n"
+                )?;
+                Ok(())
+              })
+            .arg("worker")
+            .arg(id.to_string())
+            .spawn()
+          };
+        let mut child = match process {
           Ok(res) => res,
           Err(_err) => {
             return Err(SupervisorError::ChildError(
@@ -51,9 +62,13 @@ pub async fn run(current_path: &str) -> Result<(), SupervisorError> {
         if !status.success() {
           let code = status.code().unwrap_or(255);
           println!("\nJob processing failed with code {}!", code);
-          if let Err(err) = update_db_with_job_error(&pool, id, "Unhandled error. The server might not have enough resources to process the job or infrastructure might be unreachable.".to_string()).await {
-      return Err(SupervisorError::Database(format!("Couldn't update job {id} with error {err}")))
-      }
+          let error_message = match code {
+            255 => "Process aborted",
+            _ => "Process error"
+          };
+          if let Err(err) = update_db_with_job_error(&pool, id, error_message.to_string() + ". The server might not have enough resources to process the job or infrastructure might be unreachable.").await {
+            return Err(SupervisorError::Database(format!("Couldn't update job {id} with error {err}")))
+          }
         } else {
           println!("\nWorker exited successfully");
         }

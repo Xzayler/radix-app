@@ -17,8 +17,8 @@ export default function Login() {
 
   return (
     <div class="h-full flex flex-col justify-center items-center">
-      <div class="text-foreground h-6">
-        {loginSubmission.pending ? '' : (loginSubmission.error?.message ?? '')}
+      <div class="text-red-500 h-6 font-semibold">
+        {loginSubmission.error?.message}
       </div>
       <form
         action={loginAction}
@@ -32,7 +32,7 @@ export default function Login() {
           placeholder="Username"
           required
           minLength={3}
-          maxLength={16}
+          maxLength={32}
         />
         <input
           class="p-3.5 bg-background rounded-b border border-ui text-foreground outline-none"

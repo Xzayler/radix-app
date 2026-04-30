@@ -48,7 +48,7 @@ export function validateInputAsJobType(
     throw new Error(`No ${entityName} provided`);
   }
 
-  if (input != 'Walk' && input != 'Decision' && input != 'Classification') {
+  if (input != 'Path' && input != 'Decision' && input != 'Classification') {
     throw new Error(`Invalid ${entityName} value`);
   }
   return input;

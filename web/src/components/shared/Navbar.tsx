@@ -13,12 +13,6 @@ export default function Navbar(props: { user: User | null | undefined }) {
         <div class="grow flex items-center justify-center gap-6">
           <A
             class="hover:underline underline-offset-2 decoration-2 text-md font-semibold uppercase tracking-wider text-foreground"
-            href="/"
-          >
-            Home
-          </A>
-          <A
-            class="hover:underline underline-offset-2 decoration-2 text-md font-semibold uppercase tracking-wider text-foreground"
             href="/systems"
           >
             Systems

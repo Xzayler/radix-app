@@ -145,7 +145,7 @@ pub async fn update_db_with_job_error(
   job_id: i32,
   err: String,
 ) -> Result<(), WorkerError> {
-  let error_string = err.to_string();
+  let error_string = err.to_string().replace("'", "''");
 
   let res = sqlx::query(
     format!(

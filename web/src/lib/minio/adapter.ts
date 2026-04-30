@@ -12,20 +12,19 @@ export async function getDownloadUrl(key: string): Promise<string> {
   }
 
   try {
-    return await minioClient.presignedGetObject(
-      bucketName,
-      key,
-      DOWNLOAD_URL_EXPIRY_SECONDS,
-      {
-        'response-content-disposition': `attachment; filename="${key}"`,
-        'response-content-type': 'application/octet-stream',
-      },
-    );
+    return (
+      await minioClient.presignedGetObject(
+        bucketName,
+        key,
+        DOWNLOAD_URL_EXPIRY_SECONDS,
+        {
+          'response-content-disposition': `attachment; filename="${key}"`,
+          'response-content-type': 'application/octet-stream',
+        },
+      )
+    ).replace('minio:9000', 'localhost:9000');
   } catch (e) {
+    console.log(e);
     throw new Error('Failed to generate presigned url');
   }
 }
-
-// export async function uploadFile(object: string, content: string) {
-//   await minioClient.putObject(bucketName, object, content);
-// }

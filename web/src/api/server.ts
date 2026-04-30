@@ -30,7 +30,7 @@ import {
   validateInputAsDigitType,
   validateInputAsExplicitDigits,
   validateInputAsJValue,
-} from '~/lib/validators';
+} from '~/lib/utils/validators';
 import { getDownloadUrl as gdu } from '~/lib/minio/adapter';
 import { Digits, NewJob, NewSystem, System } from '~/types';
 
@@ -184,4 +184,11 @@ async function dbErrorWrapper<T extends () => Promise<any>>(
 }
 
 // Minio
-export const getDownloadUrl = gdu;
+export const getDownloadUrl = async (uri: string) => {
+  try {
+    return await gdu(uri);
+  } catch (e) {
+    console.log(e);
+    return null;
+  }
+};

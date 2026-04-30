@@ -5,6 +5,7 @@ edition = "2024"
 
 [profile.release]
 lto = "thin"
+overflow-checks = true
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
